@@ -76,25 +76,59 @@ export default function NavigationBar() {
             Beranda
           </Link>
           
-          {/* Desktop & Tablet Filters (ponytail: responsive tailwind classes handle visibility changes without JS overhead) */}
-          <Link href="#" className="hidden lg:inline transition-colors duration-150 hover:text-zinc-50 text-zinc-400">
+          {/* Desktop & Tablet Filters (ponytail: native tailwind responsive classes & hover dropdown groups) */}
+          <Link href="/discover?anime=true" className="hidden lg:inline transition-colors duration-150 hover:text-zinc-50 text-zinc-400">
             Anime
           </Link>
-          <Link href="#" className="hidden md:inline transition-colors duration-150 hover:text-zinc-50 text-zinc-400">
+          
+          <Link href="/discover?type=movie" className="hidden md:inline transition-colors duration-150 hover:text-zinc-50 text-zinc-400">
             Movies
           </Link>
-          <Link href="#" className="hidden lg:inline transition-colors duration-150 hover:text-zinc-50 text-zinc-400">
+          
+          <Link href="/discover?type=tv" className="hidden lg:inline transition-colors duration-150 hover:text-zinc-50 text-zinc-400">
             TV Show
           </Link>
-          <Link href="#" className="hidden lg:inline transition-colors duration-150 hover:text-zinc-50 text-zinc-400">
+          
+          <Link href="/discover?drama=true" className="hidden lg:inline transition-colors duration-150 hover:text-zinc-50 text-zinc-400">
             Drama
           </Link>
-          <Link href="#" className="hidden md:inline transition-colors duration-150 hover:text-zinc-50 text-zinc-400">
-            Genre
-          </Link>
-          <Link href="#" className="hidden md:inline transition-colors duration-150 hover:text-zinc-50 text-zinc-400">
-            Years
-          </Link>
+          
+          {/* Genre Dropdown */}
+          <div className="relative group hidden md:block">
+            <button className="transition-colors duration-150 hover:text-zinc-50 text-zinc-400 text-sm font-medium h-16 flex items-center gap-1 focus:outline-none">
+              Genre
+            </button>
+            <div className="absolute left-0 mt-0 w-40 bg-zinc-950 border border-zinc-900 rounded-lg shadow-2xl hidden group-hover:block z-50">
+              <div className="py-1">
+                <Link href="/discover?genre=28&genreName=Aksi" className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">Aksi</Link>
+                <Link href="/discover?genre=35&genreName=Komedi" className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">Komedi</Link>
+                <Link href="/discover?genre=18&genreName=Drama" className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">Drama</Link>
+                <Link href="/discover?genre=27&genreName=Horor" className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">Horor</Link>
+                <Link href="/discover?genre=10749&genreName=Romantis" className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">Romantis</Link>
+                <Link href="/discover?genre=878&genreName=Sci-Fi" className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">Sci-Fi</Link>
+                <Link href="/discover?genre=16&genreName=Animasi" className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">Animasi</Link>
+                <Link href="/discover?genre=9648&genreName=Misteri" className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">Misteri</Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Years Dropdown */}
+          <div className="relative group hidden md:block">
+            <button className="transition-colors duration-150 hover:text-zinc-50 text-zinc-400 text-sm font-medium h-16 flex items-center gap-1 focus:outline-none">
+              Years
+            </button>
+            <div className="absolute left-0 mt-0 w-32 bg-zinc-950 border border-zinc-900 rounded-lg shadow-2xl hidden group-hover:block z-50">
+              <div className="py-1">
+                <Link href="/discover?year=2026" className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">2026</Link>
+                <Link href="/discover?year=2025" className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">2025</Link>
+                <Link href="/discover?year=2024" className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">2024</Link>
+                <Link href="/discover?year=2023" className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">2023</Link>
+                <Link href="/discover?year=2022" className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">2022</Link>
+                <Link href="/discover?year=2021" className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">2021</Link>
+                <Link href="/discover?year=2020" className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">2020</Link>
+              </div>
+            </div>
+          </div>
 
           <Link 
             href="/watchlist" 
