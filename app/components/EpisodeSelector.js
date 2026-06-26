@@ -42,6 +42,8 @@ export default function EpisodeSelector({ tvId, seasons }) {
         <h2 className="text-lg md:text-xl font-bold text-zinc-50">Episode</h2>
         <div className="relative">
           <select
+            id="season-selector"
+            name="season"
             value={selectedSeason}
             onChange={(e) => setSelectedSeason(Number(e.target.value))}
             className="bg-zinc-900 text-zinc-100 pl-4 pr-8 py-2 rounded-lg border border-zinc-800 text-xs sm:text-sm font-semibold focus:outline-none focus:border-red-650 cursor-pointer appearance-none"

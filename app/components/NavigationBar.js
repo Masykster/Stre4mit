@@ -90,12 +90,14 @@ export default function NavigationBar() {
         <div className="relative">
           <input
             type="text"
+            id="search-query"
+            name="q"
             placeholder="Cari film atau TV series..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => query.trim() && setIsOpen(true)}
             aria-label="Cari konten"
-            className="w-full h-10 pl-10 pr-8 bg-zinc-900/80 text-zinc-100 rounded-full border border-zinc-800 text-sm focus:outline-none focus:border-red-600 focus:bg-zinc-900 transition-colors duration-150 placeholder-zinc-500"
+            className="w-full h-10 pl-10 pr-8 bg-zinc-900/80 text-zinc-100 rounded-full border border-zinc-800 text-sm focus:outline-none focus:border-red-650 focus:bg-zinc-900 transition-colors duration-150 placeholder-zinc-550"
           />
           <Search size={18} className="absolute left-3.5 top-2.5 text-zinc-500" />
           {query && (

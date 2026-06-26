@@ -120,6 +120,8 @@ export default function VideoPlayer({ id, type, title, backdropPath, season, epi
           <div className="flex items-center gap-2">
             <span className="text-xs text-zinc-500 font-semibold hidden sm:inline">Server:</span>
             <select
+              id="source-selector"
+              name="source"
               value={source}
               onChange={(e) => setSource(e.target.value)}
               className="bg-zinc-900 text-zinc-300 text-xs font-semibold px-3 py-1.5 rounded-lg border border-zinc-800 focus:outline-none focus:border-red-600 cursor-pointer"
@@ -230,6 +232,8 @@ export default function VideoPlayer({ id, type, title, backdropPath, season, epi
               Normal View
             </button>
             <select
+              id="source-selector-theater"
+              name="source"
               value={source}
               onChange={(e) => setSource(e.target.value)}
               className="bg-zinc-900 text-zinc-300 text-xs font-semibold px-4 h-11 rounded-full border border-zinc-800 focus:outline-none focus:border-red-600 cursor-pointer"
