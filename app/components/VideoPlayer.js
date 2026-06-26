@@ -149,8 +149,8 @@ export default function VideoPlayer({ id, type, title, backdropPath, season, epi
           title={title}
           className="w-full h-full border-none"
           allowFullScreen={true}
-          webkitAllowFullScreen={true}
-          mozAllowFullScreen={true}
+          webkitallowfullscreen="true"
+          mozallowfullscreen="true"
           referrerPolicy="no-referrer"
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
         />

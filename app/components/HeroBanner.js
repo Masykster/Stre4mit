@@ -90,7 +90,7 @@ export default function HeroBanner({ items }) {
         ) : (
           <>
             <Image
-              src={`https://image.tmdb.org/t/p/original${currentItem.backdrop_path}`}
+              src={`https://image.tmdb.org/t/p/w1280${currentItem.backdrop_path}`}
               alt={title}
               fill
               priority

@@ -47,7 +47,7 @@ export default async function TVDetails({ params }) {
         {data.backdrop_path && (
           <>
             <Image
-              src={`https://image.tmdb.org/t/p/original${data.backdrop_path}`}
+              src={`https://image.tmdb.org/t/p/w1280${data.backdrop_path}`}
               alt={title}
               fill
               priority
