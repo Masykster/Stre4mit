@@ -1,4 +1,4 @@
-import MovieCard from '../components/MovieCard';
+import DiscoverList from '../components/DiscoverList';
 import Link from 'next/link';
 import { ArrowLeft, Film } from 'lucide-react';
 
@@ -8,28 +8,35 @@ async function getDiscoverData(searchParams) {
 
   const { type, genre, year, anime, drama } = searchParams;
   let endpoint = 'discover/movie';
+  
+  // Sort by release date descending
   const query = new URLSearchParams({
     api_key: apiKey,
-    sort_by: 'popularity.desc',
+    sort_by: type === 'tv' || anime === 'true' ? 'first_air_date.desc' : 'primary_release_date.desc',
     include_adult: 'false',
     language: 'id-ID',
   });
 
+  const today = new Date().toISOString().split('T')[0];
+
   if (type === 'tv') {
     endpoint = 'discover/tv';
+    query.set('first_air_date.lte', today);
+  } else {
+    query.set('primary_release_date.lte', today);
   }
 
   if (anime === 'true') {
     endpoint = 'discover/tv';
     query.set('with_genres', '16'); // Animation
     query.set('with_original_language', 'ja'); // Japanese language (commonly Anime)
+    query.set('first_air_date.lte', today);
   } else if (drama === 'true') {
     endpoint = 'discover/movie';
     query.set('with_genres', '18'); // Drama
   } else {
     if (genre) {
       query.set('with_genres', genre);
-      // Certain genres might exist only in tv or only in movies, or we default to movie
     }
     if (year) {
       if (endpoint === 'discover/tv') {
@@ -67,17 +74,17 @@ export default async function DiscoverPage({ searchParams }) {
   // Resolve page header title
   let pageTitle = "Temukan Konten";
   if (anime === 'true') {
-    pageTitle = "Anime Terpopuler";
+    pageTitle = "Anime Terbaru";
   } else if (drama === 'true') {
-    pageTitle = "Film Drama Pilihan";
+    pageTitle = "Film Drama Terbaru";
   } else if (genreName) {
     pageTitle = `Genre: ${genreName}`;
   } else if (year) {
     pageTitle = `Rilis Tahun ${year}`;
   } else if (type === 'movie') {
-    pageTitle = "Daftar Film Populer";
+    pageTitle = "Film Terbaru";
   } else if (type === 'tv') {
-    pageTitle = "Daftar TV Series Populer";
+    pageTitle = "TV Series Terbaru";
   }
 
   return (
@@ -97,19 +104,16 @@ export default async function DiscoverPage({ searchParams }) {
             <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white leading-tight">
               {pageTitle}
             </h1>
-            <p className="text-xs text-zinc-500 font-semibold mt-1">
-              Menampilkan {items.length} hasil terpopuler dari database TMDb
-            </p>
           </div>
         </div>
 
-        {/* Results Grid */}
+        {/* Results Grid with Infinite Scroll */}
         {items.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
-            {items.map((item) => (
-              <MovieCard key={item.id} item={item} />
-            ))}
-          </div>
+          <DiscoverList 
+            key={JSON.stringify(resolvedSearchParams)} 
+            initialItems={items} 
+            searchParams={resolvedSearchParams} 
+          />
         ) : (
           <div className="flex flex-col items-center justify-center py-20 text-center max-w-md mx-auto space-y-4">
             <Film className="text-zinc-700 w-16 h-16 animate-pulse" />

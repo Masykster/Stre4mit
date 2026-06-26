@@ -87,13 +87,13 @@ export default function VideoPlayer({ id, type, title, backdropPath, season, epi
     ? (type === 'tv'
         ? `https://vidlink.pro/tv/${id}/${season}/${episode}?primaryColor=dc2626&secondaryColor=18181b&iconColor=dc2626&icons=vid&nextbutton=true`
         : `https://vidlink.pro/movie/${id}?primaryColor=dc2626&secondaryColor=18181b&iconColor=dc2626&icons=vid`)
-    : source === 'vidsrc.to'
-    ? (type === 'tv' 
+    : source === 'videasy'
+    ? (type === 'tv'
+        ? `https://player.videasy.net/tv/${id}/${season}/${episode}?color=dc2626&nextEpisode=true&autoplayNextEpisode=true&episodeSelector=true&overlay=true`
+        : `https://player.videasy.net/movie/${id}?color=dc2626&overlay=true`)
+    : (type === 'tv' 
         ? `https://vidsrc.to/embed/tv/${id}/${season}/${episode}`
-        : `https://vidsrc.to/embed/movie/${id}`)
-    : (type === 'tv'
-        ? `https://vidsrc.xyz/embed/tv/${id}/${season}/${episode}`
-        : `https://vidsrc.xyz/embed/movie/${id}`);
+        : `https://vidsrc.to/embed/movie/${id}`);
 
   return (
     <div className={`space-y-6 ${theaterMode ? 'w-full max-w-full' : 'max-w-5xl mx-auto px-4'}`}>
@@ -124,12 +124,12 @@ export default function VideoPlayer({ id, type, title, backdropPath, season, epi
               name="source"
               value={source}
               onChange={(e) => setSource(e.target.value)}
-              className="bg-zinc-900 text-zinc-300 text-xs font-semibold px-3 py-1.5 rounded-lg border border-zinc-800 focus:outline-none focus:border-red-600 cursor-pointer"
+              className="bg-zinc-900 text-zinc-300 text-xs font-semibold px-3 py-1.5 rounded-lg border border-zinc-800 focus:outline-none focus:border-red-655 cursor-pointer"
             >
-              <option value="vidsrc-embed.ru">Vidsrc-embed.ru (Utama)</option>
-              <option value="vidlink.pro">Vidlink.pro (Premium / Ad-Free)</option>
-              <option value="vidsrc.to">Vidsrc.to (Cadangan 1)</option>
-              <option value="vidsrc.xyz">Vidsrc.xyz (Cadangan 2)</option>
+              <option value="vidsrc-embed.ru">Vidsrc-embed.ru</option>
+              <option value="vidlink.pro">Vidlink.pro</option>
+              <option value="videasy">Videasy.net</option>
+              <option value="vidsrc.to">Vidsrc.to</option>
             </select>
           </div>
         </div>
@@ -236,12 +236,12 @@ export default function VideoPlayer({ id, type, title, backdropPath, season, epi
               name="source"
               value={source}
               onChange={(e) => setSource(e.target.value)}
-              className="bg-zinc-900 text-zinc-300 text-xs font-semibold px-4 h-11 rounded-full border border-zinc-800 focus:outline-none focus:border-red-600 cursor-pointer"
+              className="bg-zinc-900 text-zinc-300 text-xs font-semibold px-4 h-11 rounded-full border border-zinc-800 focus:outline-none focus:border-red-650 cursor-pointer"
             >
               <option value="vidsrc-embed.ru">Server 1 (vidsrc-embed.ru)</option>
               <option value="vidlink.pro">Server 2 (vidlink.pro)</option>
-              <option value="vidsrc.to">Server 3 (vidsrc.to)</option>
-              <option value="vidsrc.xyz">Server 4 (vidsrc.xyz)</option>
+              <option value="videasy">Server 3 (videasy.net)</option>
+              <option value="vidsrc.to">Server 4 (vidsrc.to)</option>
             </select>
           </div>
         )}

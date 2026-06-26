@@ -105,7 +105,7 @@ export default async function Home() {
 
       {/* Now Playing Row */}
       <Suspense fallback={<MovieRowSkeleton />}>
-        <LazyMovieRow title="Sedang Tayang di Bioskop" endpoint="movie/now_playing" queryParams={{ region: 'ID' }} />
+        <LazyMovieRow title="Sedang Trending" endpoint="movie/now_playing" queryParams={{ region: 'ID' }} />
       </Suspense>
 
       {/* Popular Movies Row */}
