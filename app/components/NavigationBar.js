@@ -75,6 +75,27 @@ export default function NavigationBar() {
           >
             Beranda
           </Link>
+          
+          {/* Desktop & Tablet Filters (ponytail: responsive tailwind classes handle visibility changes without JS overhead) */}
+          <Link href="#" className="hidden lg:inline transition-colors duration-150 hover:text-zinc-50 text-zinc-400">
+            Anime
+          </Link>
+          <Link href="#" className="hidden md:inline transition-colors duration-150 hover:text-zinc-50 text-zinc-400">
+            Movies
+          </Link>
+          <Link href="#" className="hidden lg:inline transition-colors duration-150 hover:text-zinc-50 text-zinc-400">
+            TV Show
+          </Link>
+          <Link href="#" className="hidden lg:inline transition-colors duration-150 hover:text-zinc-50 text-zinc-400">
+            Drama
+          </Link>
+          <Link href="#" className="hidden md:inline transition-colors duration-150 hover:text-zinc-50 text-zinc-400">
+            Genre
+          </Link>
+          <Link href="#" className="hidden md:inline transition-colors duration-150 hover:text-zinc-50 text-zinc-400">
+            Years
+          </Link>
+
           <Link 
             href="/watchlist" 
             className={`transition-colors duration-150 hover:text-zinc-50 flex items-center gap-1.5 ${pathname === '/watchlist' ? 'text-red-500 font-semibold' : 'text-zinc-400'}`}
