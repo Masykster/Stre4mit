@@ -91,6 +91,10 @@ export default function VideoPlayer({ id, type, title, backdropPath, season, epi
     ? (type === 'tv'
         ? `https://player.videasy.net/tv/${id}/${season}/${episode}?color=dc2626&nextEpisode=true&autoplayNextEpisode=true&episodeSelector=true&overlay=true`
         : `https://player.videasy.net/movie/${id}?color=dc2626&overlay=true`)
+    : source === 'superembed'
+    ? (type === 'tv'
+        ? `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${season}&e=${episode}`
+        : `https://multiembed.mov/?video_id=${id}&tmdb=1`)
     : (type === 'tv' 
         ? `https://vidsrc.to/embed/tv/${id}/${season}/${episode}`
         : `https://vidsrc.to/embed/movie/${id}`);
@@ -129,6 +133,7 @@ export default function VideoPlayer({ id, type, title, backdropPath, season, epi
               <option value="vidsrc-embed.ru">Vidsrc-embed.ru</option>
               <option value="vidlink.pro">Vidlink.pro</option>
               <option value="videasy">Videasy.net</option>
+              <option value="superembed">Superembed.mov</option>
               <option value="vidsrc.to">Vidsrc.to</option>
             </select>
           </div>
@@ -241,7 +246,8 @@ export default function VideoPlayer({ id, type, title, backdropPath, season, epi
               <option value="vidsrc-embed.ru">Server 1 (vidsrc-embed.ru)</option>
               <option value="vidlink.pro">Server 2 (vidlink.pro)</option>
               <option value="videasy">Server 3 (videasy.net)</option>
-              <option value="vidsrc.to">Server 4 (vidsrc.to)</option>
+              <option value="superembed">Server 4 (superembed.mov)</option>
+              <option value="vidsrc.to">Server 5 (vidsrc.to)</option>
             </select>
           </div>
         )}
