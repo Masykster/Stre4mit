@@ -92,10 +92,10 @@ export default async function MovieDetails({ params }) {
                   </div>
                 )}
                 {year && (
-                  <div className="flex items-center gap-1">
+                  <Link href={`/discover?type=movie&year=${year}`} className="flex items-center gap-1 hover:text-red-500 transition-colors duration-150">
                     <Calendar size={16} className="text-zinc-500" />
                     <span>{year}</span>
-                  </div>
+                  </Link>
                 )}
                 {runtime && (
                   <div className="flex items-center gap-1">
@@ -108,9 +108,9 @@ export default async function MovieDetails({ params }) {
               {/* Genres badges */}
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-1">
                 {genres.map((g) => (
-                  <span key={g.id} className="text-[10px] sm:text-xs font-bold uppercase tracking-wider bg-zinc-900 border border-zinc-800 text-zinc-300 px-2.5 py-1 rounded-full">
+                  <Link key={g.id} href={`/discover?genre=${g.id}&genreName=${encodeURIComponent(g.name)}`} className="text-[10px] sm:text-xs font-bold uppercase tracking-wider bg-zinc-900 border border-zinc-800 text-zinc-300 px-2.5 py-1 rounded-full hover:bg-red-950 hover:border-red-900 hover:text-red-400 transition-colors duration-150">
                     {g.name}
-                  </span>
+                  </Link>
                 ))}
               </div>
             </div>

@@ -6,44 +6,79 @@ async function getDiscoverData(searchParams) {
   const apiKey = process.env.TMDB_API_KEY;
   if (!apiKey || apiKey === 'your_tmdb_api_key_here') return [];
 
-  const { type, genre, year, anime, drama } = searchParams;
+  const { type, genre, year, month, anime, drama, sortBy, subType } = searchParams;
   let endpoint = 'discover/movie';
   
-  // Sort by release date descending
+  if (type === 'tv') {
+    endpoint = 'discover/tv';
+  } else if (type === 'movie') {
+    endpoint = 'discover/movie';
+  } else if (anime === 'true') {
+    endpoint = subType === 'movie' ? 'discover/movie' : 'discover/tv';
+  } else if (drama === 'true') {
+    endpoint = subType === 'tv' ? 'discover/tv' : 'discover/movie';
+  } else if (genre) {
+    endpoint = 'discover/movie';
+  }
+
+  // Determine sorting parameter
+  let tmdbSortBy = 'primary_release_date.desc';
+  if (endpoint === 'discover/tv') {
+    tmdbSortBy = 'first_air_date.desc';
+  }
+  
+  if (sortBy === 'popularity') {
+    tmdbSortBy = 'popularity.desc';
+  } else if (sortBy === 'title') {
+    tmdbSortBy = endpoint === 'discover/tv' ? 'original_name.asc' : 'original_title.asc';
+  } else if (sortBy === 'release_date') {
+    tmdbSortBy = endpoint === 'discover/tv' ? 'first_air_date.desc' : 'primary_release_date.desc';
+  }
+
   const query = new URLSearchParams({
     api_key: apiKey,
-    sort_by: type === 'tv' || anime === 'true' ? 'first_air_date.desc' : 'primary_release_date.desc',
+    sort_by: tmdbSortBy,
     include_adult: 'false',
     language: 'id-ID',
   });
 
   const today = new Date().toISOString().split('T')[0];
 
-  if (type === 'tv') {
-    endpoint = 'discover/tv';
+  if (endpoint === 'discover/tv') {
     query.set('first_air_date.lte', today);
   } else {
     query.set('primary_release_date.lte', today);
   }
 
   if (anime === 'true') {
-    endpoint = 'discover/tv';
     query.set('with_genres', '16'); // Animation
     query.set('with_original_language', 'ja'); // Japanese language (commonly Anime)
-    query.set('first_air_date.lte', today);
   } else if (drama === 'true') {
-    endpoint = 'discover/movie';
     query.set('with_genres', '18'); // Drama
-  } else {
-    if (genre) {
-      query.set('with_genres', genre);
+  } else if (genre) {
+    query.set('with_genres', genre);
+  }
+
+  // Date Filtering by Year and Month
+  if (month) {
+    const yearVal = year || new Date().getFullYear();
+    const monthStr = String(month).padStart(2, '0');
+    const startDate = `${yearVal}-${monthStr}-01`;
+    const lastDay = new Date(parseInt(yearVal), parseInt(monthStr), 0).getDate();
+    const endDate = `${yearVal}-${monthStr}-${String(lastDay).padStart(2, '0')}`;
+    
+    if (endpoint === 'discover/tv') {
+      query.set('first_air_date.gte', startDate);
+      query.set('first_air_date.lte', endDate);
+    } else {
+      query.set('primary_release_date.gte', startDate);
+      query.set('primary_release_date.lte', endDate);
     }
-    if (year) {
-      if (endpoint === 'discover/tv') {
-        query.set('first_air_date_year', year);
-      } else {
-        query.set('primary_release_year', year);
-      }
+  } else if (year) {
+    if (endpoint === 'discover/tv') {
+      query.set('first_air_date_year', year);
+    } else {
+      query.set('primary_release_year', year);
     }
   }
 
@@ -57,7 +92,7 @@ async function getDiscoverData(searchParams) {
     const items = data.results || [];
     return items.map(item => ({
       ...item,
-      media_type: type || (endpoint === 'discover/tv' ? 'tv' : 'movie')
+      media_type: endpoint === 'discover/tv' ? 'tv' : 'movie'
     }));
   } catch (err) {
     console.error("Discover fetch error:", err);
@@ -69,22 +104,50 @@ export default async function DiscoverPage({ searchParams }) {
   const resolvedSearchParams = await searchParams;
   const items = await getDiscoverData(resolvedSearchParams);
 
-  const { type, genreName, year, anime, drama } = resolvedSearchParams;
+  const { type, genreName, year, month, anime, drama, subType } = resolvedSearchParams;
   
-  // Resolve page header title
+  // Resolve page header title with dynamic filters summary
   let pageTitle = "Temukan Konten";
+  let suffix = "";
+  
+  if (year) {
+    if (month) {
+      const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+      const monthName = monthNames[parseInt(month) - 1] || "";
+      suffix = ` (${monthName} ${year})`;
+    } else {
+      suffix = ` (${year})`;
+    }
+  } else if (month) {
+    const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    const monthName = monthNames[parseInt(month) - 1] || "";
+    suffix = ` (${monthName})`;
+  }
+
   if (anime === 'true') {
-    pageTitle = "Anime Terbaru";
+    if (subType === 'movie') {
+      pageTitle = `Anime Movie${suffix}`;
+    } else if (subType === 'tv') {
+      pageTitle = `Anime Series${suffix}`;
+    } else {
+      pageTitle = `Anime${suffix}`;
+    }
   } else if (drama === 'true') {
-    pageTitle = "Film Drama Terbaru";
+    if (subType === 'movie') {
+      pageTitle = `Film Drama${suffix}`;
+    } else if (subType === 'tv') {
+      pageTitle = `Drama Series${suffix}`;
+    } else {
+      pageTitle = `Drama${suffix}`;
+    }
   } else if (genreName) {
-    pageTitle = `Genre: ${genreName}`;
-  } else if (year) {
-    pageTitle = `Rilis Tahun ${year}`;
+    pageTitle = `Genre: ${genreName}${suffix}`;
   } else if (type === 'movie') {
-    pageTitle = "Film Terbaru";
+    pageTitle = `Film${suffix}`;
   } else if (type === 'tv') {
-    pageTitle = "TV Series Terbaru";
+    pageTitle = `TV Series${suffix}`;
+  } else if (year || month) {
+    pageTitle = `Rilis${suffix}`;
   }
 
   return (

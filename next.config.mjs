@@ -10,6 +10,19 @@ const nextConfig = {
       },
     ],
   },
+  async headers() {
+    return [
+      {
+        source: '/watch/:path*',
+        headers: [
+          {
+            key: 'Permissions-Policy',
+            value: 'fullscreen=*',
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

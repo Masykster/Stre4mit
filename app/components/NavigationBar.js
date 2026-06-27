@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Search, Heart, X } from 'lucide-react';
 
 export default function NavigationBar() {
@@ -11,7 +11,16 @@ export default function NavigationBar() {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
   const searchRef = useRef(null);
+
+  const handleSearchSubmit = (e) => {
+    if (e.key === 'Enter' && query.trim()) {
+      e.preventDefault();
+      setIsOpen(false);
+      router.push(`/search?q=${encodeURIComponent(query.trim())}`);
+    }
+  };
 
   // Close dropdown on path change
   useEffect(() => {
@@ -77,21 +86,106 @@ export default function NavigationBar() {
           </Link>
           
           {/* Desktop & Tablet Filters (ponytail: native tailwind responsive classes & hover dropdown groups) */}
-          <Link href="/discover?anime=true" className="hidden lg:inline transition-colors duration-150 hover:text-zinc-50 text-zinc-400">
-            Anime
-          </Link>
           
-          <Link href="/discover?type=movie" className="hidden md:inline transition-colors duration-150 hover:text-zinc-50 text-zinc-400">
-            Movies
-          </Link>
+          {/* Anime Dropdown */}
+          <div className="relative group hidden lg:block">
+            <Link 
+              href="/discover?anime=true" 
+              className={`transition-colors duration-150 hover:text-zinc-50 text-sm font-medium h-16 flex items-center ${pathname.includes('anime=true') ? 'text-red-500 font-semibold' : 'text-zinc-400'}`}
+            >
+              Anime
+            </Link>
+            <div className="absolute left-0 mt-0 w-48 bg-zinc-950 border border-zinc-900 rounded-lg shadow-2xl hidden group-hover:block z-50 p-2">
+              <div className="text-[10px] uppercase font-bold text-zinc-500 px-3 py-1 border-b border-zinc-900/50 mb-1">Urutan</div>
+              <Link href="/discover?anime=true&sortBy=popularity" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Terpopuler</Link>
+              <Link href="/discover?anime=true&sortBy=release_date" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Terbaru</Link>
+              <Link href="/discover?anime=true&sortBy=title" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Nama (A-Z)</Link>
+              
+              <div className="text-[10px] uppercase font-bold text-zinc-500 px-3 py-1 border-b border-zinc-900/50 my-1">Format</div>
+              <Link href="/discover?anime=true&subType=movie" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Anime Movie</Link>
+              <Link href="/discover?anime=true&subType=tv" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Anime Series</Link>
+              
+              <div className="text-[10px] uppercase font-bold text-zinc-500 px-3 py-1 border-b border-zinc-900/50 my-1">Tahun</div>
+              <div className="grid grid-cols-3 gap-1 px-2 py-1">
+                <Link href="/discover?anime=true&year=2026" className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">2026</Link>
+                <Link href="/discover?anime=true&year=2025" className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">2025</Link>
+                <Link href="/discover?anime=true&year=2024" className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">2024</Link>
+              </div>
+            </div>
+          </div>
           
-          <Link href="/discover?type=tv" className="hidden lg:inline transition-colors duration-150 hover:text-zinc-50 text-zinc-400">
-            TV Show
-          </Link>
+          {/* Movies Dropdown */}
+          <div className="relative group hidden md:block">
+            <Link 
+              href="/discover?type=movie" 
+              className={`transition-colors duration-150 hover:text-zinc-50 text-sm font-medium h-16 flex items-center ${pathname.includes('type=movie') ? 'text-red-500 font-semibold' : 'text-zinc-400'}`}
+            >
+              Movies
+            </Link>
+            <div className="absolute left-0 mt-0 w-48 bg-zinc-950 border border-zinc-900 rounded-lg shadow-2xl hidden group-hover:block z-50 p-2">
+              <div className="text-[10px] uppercase font-bold text-zinc-500 px-3 py-1 border-b border-zinc-900/50 mb-1">Urutan</div>
+              <Link href="/discover?type=movie&sortBy=popularity" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Terpopuler</Link>
+              <Link href="/discover?type=movie&sortBy=release_date" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Terbaru</Link>
+              <Link href="/discover?type=movie&sortBy=title" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Nama (A-Z)</Link>
+              
+              <div className="text-[10px] uppercase font-bold text-zinc-500 px-3 py-1 border-b border-zinc-900/50 my-1">Tahun</div>
+              <div className="grid grid-cols-3 gap-1 px-2 py-1">
+                <Link href="/discover?type=movie&year=2026" className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">2026</Link>
+                <Link href="/discover?type=movie&year=2025" className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">2025</Link>
+                <Link href="/discover?type=movie&year=2024" className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">2024</Link>
+              </div>
+            </div>
+          </div>
           
-          <Link href="/discover?drama=true" className="hidden lg:inline transition-colors duration-150 hover:text-zinc-50 text-zinc-400">
-            Drama
-          </Link>
+          {/* TV Show Dropdown */}
+          <div className="relative group hidden lg:block">
+            <Link 
+              href="/discover?type=tv" 
+              className={`transition-colors duration-150 hover:text-zinc-50 text-sm font-medium h-16 flex items-center ${pathname.includes('type=tv') && !pathname.includes('anime=true') ? 'text-red-500 font-semibold' : 'text-zinc-400'}`}
+            >
+              TV Show
+            </Link>
+            <div className="absolute left-0 mt-0 w-48 bg-zinc-950 border border-zinc-900 rounded-lg shadow-2xl hidden group-hover:block z-50 p-2">
+              <div className="text-[10px] uppercase font-bold text-zinc-500 px-3 py-1 border-b border-zinc-900/50 mb-1">Urutan</div>
+              <Link href="/discover?type=tv&sortBy=popularity" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Terpopuler</Link>
+              <Link href="/discover?type=tv&sortBy=release_date" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Terbaru</Link>
+              <Link href="/discover?type=tv&sortBy=title" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Nama (A-Z)</Link>
+              
+              <div className="text-[10px] uppercase font-bold text-zinc-500 px-3 py-1 border-b border-zinc-900/50 my-1">Tahun</div>
+              <div className="grid grid-cols-3 gap-1 px-2 py-1">
+                <Link href="/discover?type=tv&year=2026" className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">2026</Link>
+                <Link href="/discover?type=tv&year=2025" className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">2025</Link>
+                <Link href="/discover?type=tv&year=2024" className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">2024</Link>
+              </div>
+            </div>
+          </div>
+          
+          {/* Drama Dropdown */}
+          <div className="relative group hidden lg:block">
+            <Link 
+              href="/discover?drama=true" 
+              className={`transition-colors duration-150 hover:text-zinc-50 text-sm font-medium h-16 flex items-center ${pathname.includes('drama=true') ? 'text-red-500 font-semibold' : 'text-zinc-400'}`}
+            >
+              Drama
+            </Link>
+            <div className="absolute left-0 mt-0 w-48 bg-zinc-950 border border-zinc-900 rounded-lg shadow-2xl hidden group-hover:block z-50 p-2">
+              <div className="text-[10px] uppercase font-bold text-zinc-500 px-3 py-1 border-b border-zinc-900/50 mb-1">Urutan</div>
+              <Link href="/discover?drama=true&sortBy=popularity" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Terpopuler</Link>
+              <Link href="/discover?drama=true&sortBy=release_date" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Terbaru</Link>
+              <Link href="/discover?drama=true&sortBy=title" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Nama (A-Z)</Link>
+              
+              <div className="text-[10px] uppercase font-bold text-zinc-500 px-3 py-1 border-b border-zinc-900/50 my-1">Format</div>
+              <Link href="/discover?drama=true&subType=movie" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Drama Movie</Link>
+              <Link href="/discover?drama=true&subType=tv" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Drama Series</Link>
+              
+              <div className="text-[10px] uppercase font-bold text-zinc-500 px-3 py-1 border-b border-zinc-900/50 my-1">Tahun</div>
+              <div className="grid grid-cols-3 gap-1 px-2 py-1">
+                <Link href="/discover?drama=true&year=2026" className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">2026</Link>
+                <Link href="/discover?drama=true&year=2025" className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">2025</Link>
+                <Link href="/discover?drama=true&year=2024" className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">2024</Link>
+              </div>
+            </div>
+          </div>
           
           {/* Genre Dropdown */}
           <div className="relative group hidden md:block">
@@ -150,6 +244,7 @@ export default function NavigationBar() {
             placeholder="Cari film atau TV series..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={handleSearchSubmit}
             onFocus={() => query.trim() && setIsOpen(true)}
             aria-label="Cari konten"
             className="w-full h-10 pl-10 pr-8 bg-zinc-900/80 text-zinc-100 rounded-full border border-zinc-800 text-sm focus:outline-none focus:border-red-650 focus:bg-zinc-900 transition-colors duration-150 placeholder-zinc-550"

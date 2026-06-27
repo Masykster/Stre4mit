@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { Maximize2, Minimize2, ArrowLeft, ChevronLeft, ChevronRight, Tv } from 'lucide-react';
+import { Maximize2, ArrowLeft, ChevronLeft, ChevronRight, Tv } from 'lucide-react';
 import Link from 'next/link';
 
 export default function VideoPlayer({ id, type, title, backdropPath, season, episode, nextEpisodeHref, prevEpisodeHref }) {
@@ -150,37 +150,37 @@ export default function VideoPlayer({ id, type, title, backdropPath, season, epi
           src={embedUrl}
           title={title}
           className="w-full h-full border-none"
-          allowFullScreen={true}
-          webkitallowfullscreen="true"
-          mozallowfullscreen="true"
+          allowFullScreen
           referrerPolicy="no-referrer"
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
         />
 
-        {/* Floating Overlay Controls */}
-        <div className="absolute top-4 right-4 flex items-center gap-2 z-20">
-          {/* Theater mode button */}
-          <button
-            onClick={() => setTheaterMode(!theaterMode)}
-            className={`p-2.5 rounded-full border transition-colors h-11 w-11 flex items-center justify-center active:scale-95 ${
-              theaterMode 
-                ? 'bg-red-950/80 text-red-400 border-red-900/50 hover:bg-red-900' 
-                : 'bg-black/60 text-white border-zinc-800/80 hover:bg-black/95'
-            }`}
-            title={theaterMode ? "Keluar Mode Bioskop" : "Mode Bioskop"}
-          >
-            <Tv size={16} />
-          </button>
-          
-          {/* Custom Fullscreen button */}
-          <button
-            onClick={toggleFullscreen}
-            className="bg-black/60 text-white p-2.5 rounded-full hover:bg-black/95 transition-colors border border-zinc-800/80 h-11 w-11 flex items-center justify-center active:scale-95"
-            title={isFullscreen ? "Keluar Layar Penuh" : "Layar Penuh"}
-          >
-            {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-          </button>
-        </div>
+        {/* Floating Overlay Controls — hidden in fullscreen */}
+        {!isFullscreen && (
+          <div className="absolute top-4 right-4 flex items-center gap-2 z-20">
+            {/* Theater mode button */}
+            <button
+              onClick={() => setTheaterMode(!theaterMode)}
+              className={`p-2.5 rounded-full border transition-colors h-11 w-11 flex items-center justify-center active:scale-95 ${
+                theaterMode 
+                  ? 'bg-red-950/80 text-red-400 border-red-900/50 hover:bg-red-900' 
+                  : 'bg-black/60 text-white border-zinc-800/80 hover:bg-black/95'
+              }`}
+              title={theaterMode ? "Keluar Mode Bioskop" : "Mode Bioskop"}
+            >
+              <Tv size={16} />
+            </button>
+            
+            {/* Custom Fullscreen button */}
+            <button
+              onClick={toggleFullscreen}
+              className="bg-black/60 text-white p-2.5 rounded-full hover:bg-black/95 transition-colors border border-zinc-800/80 h-11 w-11 flex items-center justify-center active:scale-95"
+              title="Layar Penuh"
+            >
+              <Maximize2 size={16} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Control Navigation & Extra details */}
