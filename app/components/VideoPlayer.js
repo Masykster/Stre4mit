@@ -95,6 +95,14 @@ export default function VideoPlayer({ id, type, title, backdropPath, season, epi
     ? (type === 'tv'
         ? `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${season}&e=${episode}`
         : `https://multiembed.mov/?video_id=${id}&tmdb=1`)
+    : source === 'smashystream'
+    ? (type === 'tv'
+        ? `https://embed.smashystream.com/playere.php?tmdb=${id}&season=${season}&episode=${episode}`
+        : `https://embed.smashystream.com/playere.php?tmdb=${id}`)
+    : source === '2embed'
+    ? (type === 'tv'
+        ? `https://www.2embed.cc/embedtv/${id}?s=${season}&e=${episode}`
+        : `https://www.2embed.cc/embed/${id}`)
     : (type === 'tv' 
         ? `https://vidsrc.to/embed/tv/${id}/${season}/${episode}`
         : `https://vidsrc.to/embed/movie/${id}`);
@@ -134,6 +142,8 @@ export default function VideoPlayer({ id, type, title, backdropPath, season, epi
               <option value="vidlink.pro">Vidlink.pro</option>
               <option value="videasy">Videasy.net</option>
               <option value="superembed">Superembed.mov</option>
+              <option value="smashystream">SmashyStream</option>
+              <option value="2embed">2embed.cc</option>
               <option value="vidsrc.to">Vidsrc.to</option>
             </select>
           </div>
@@ -155,7 +165,9 @@ export default function VideoPlayer({ id, type, title, backdropPath, season, epi
           src={embedUrl}
           title={title}
           className="w-full h-full border-none"
-          allowFullScreen
+          allowFullScreen={true}
+          webkitallowfullscreen="true"
+          mozallowfullscreen="true"
           referrerPolicy="no-referrer"
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
         />
@@ -247,7 +259,9 @@ export default function VideoPlayer({ id, type, title, backdropPath, season, epi
               <option value="vidlink.pro">Server 2 (vidlink.pro)</option>
               <option value="videasy">Server 3 (videasy.net)</option>
               <option value="superembed">Server 4 (superembed.mov)</option>
-              <option value="vidsrc.to">Server 5 (vidsrc.to)</option>
+              <option value="smashystream">Server 5 (smashystream.com)</option>
+              <option value="2embed">Server 6 (2embed.cc)</option>
+              <option value="vidsrc.to">Server 7 (vidsrc.to)</option>
             </select>
           </div>
         )}
