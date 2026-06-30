@@ -52,11 +52,11 @@ export default function NavigationBar() {
       setLoading(true);
       setIsOpen(true);
       try {
-        const res = await fetch(`/api/tmdb/search/multi?query=${encodeURIComponent(query)}`);
+        const res = await fetch(`/api/tmdb/search/multi?query=${encodeURIComponent(query)}&include_adult=false`);
         const data = await res.json();
         if (data.results) {
           const filtered = data.results
-            .filter((item) => (item.media_type === 'movie' || item.media_type === 'tv') && (item.poster_path || item.backdrop_path))
+            .filter((item) => (item.media_type === 'movie' || item.media_type === 'tv') && (item.poster_path || item.backdrop_path) && !item.adult)
             .slice(0, 6);
           setResults(filtered);
         }

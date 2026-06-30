@@ -89,7 +89,7 @@ async function getDiscoverData(searchParams) {
     const data = await res.json();
     
     // Explicitly set media_type on items so MovieCard handles navigation routes correctly
-    const items = data.results || [];
+    const items = (data.results || []).filter(item => !item.adult);
     return items.map(item => ({
       ...item,
       media_type: endpoint === 'discover/tv' ? 'tv' : 'movie'

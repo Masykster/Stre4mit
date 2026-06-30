@@ -13,9 +13,9 @@ async function searchTMDb(query, page = 1) {
     if (!res.ok) return { results: [], total_results: 0, total_pages: 0 };
     const data = await res.json();
     
-    // Filter to only movies and TV shows with poster/backdrop
+    // Filter to only movies and TV shows with poster/backdrop and not adult
     const filtered = (data.results || []).filter(
-      (item) => (item.media_type === 'movie' || item.media_type === 'tv') && (item.poster_path || item.backdrop_path)
+      (item) => (item.media_type === 'movie' || item.media_type === 'tv') && (item.poster_path || item.backdrop_path) && !item.adult
     );
 
     return {

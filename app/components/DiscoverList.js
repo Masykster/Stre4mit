@@ -140,7 +140,7 @@ export default function DiscoverList({ initialItems, searchParams }) {
       if (!res.ok) throw new Error("Failed to fetch next page");
       const data = await res.json();
       
-      const newResults = data.results || [];
+      const newResults = (data.results || []).filter(item => !item.adult);
       const formattedItems = newResults.map(item => ({
         ...item,
         media_type: apiEndpoint === 'discover/tv' ? 'tv' : 'movie'

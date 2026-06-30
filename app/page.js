@@ -56,9 +56,9 @@ function MovieRowSkeleton() {
 
 // Lazy components using React Suspense for server-side HTML streaming
 async function LazyHeroBanner() {
-  const data = await fetchFromTMDb('trending/all/day');
+  const data = await fetchFromTMDb('trending/all/day', { include_adult: 'false' });
   const items = data?.results
-    ?.filter(item => item.backdrop_path && (item.title || item.name))
+    ?.filter(item => item.backdrop_path && (item.title || item.name) && !item.adult)
     ?.slice(0, 5) || [];
 
   if (items.length === 0) return null;
@@ -66,9 +66,11 @@ async function LazyHeroBanner() {
 }
 
 async function LazyMovieRow({ title, endpoint, queryParams = {} }) {
-  const data = await fetchFromTMDb(endpoint, queryParams);
+  const data = await fetchFromTMDb(endpoint, { include_adult: 'false', ...queryParams });
   if (!data || !data.results || data.results.length === 0) return null;
-  return <MovieRow title={title} items={data.results} />;
+  const filtered = data.results.filter(item => !item.adult);
+  if (filtered.length === 0) return null;
+  return <MovieRow title={title} items={filtered} />;
 }
 
 export default async function Home() {

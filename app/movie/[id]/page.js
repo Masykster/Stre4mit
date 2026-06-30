@@ -35,7 +35,7 @@ export default async function MovieDetails({ params }) {
   const genres = data.genres || [];
   const overview = data.overview || 'Sinopsis belum tersedia.';
   const cast = data.credits?.cast?.slice(0, 6) || [];
-  const recommendations = data.recommendations?.results?.slice(0, 6) || [];
+  const recommendations = (data.recommendations?.results || []).filter(item => !item.adult).slice(0, 6);
   const watchUrl = `/watch/movie/${data.id}`;
 
   return (

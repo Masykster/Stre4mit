@@ -15,6 +15,7 @@ export async function GET(request, { params }) {
 
   const query = new URLSearchParams(searchParams);
   query.set('api_key', apiKey);
+  query.set('include_adult', 'false');
 
   const url = `https://api.themoviedb.org/3/${path}?${query.toString()}`;
 
