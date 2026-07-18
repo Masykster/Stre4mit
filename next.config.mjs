@@ -13,7 +13,7 @@ const nextConfig = {
   async headers() {
     return [
       {
-        source: '/watch/:path*',
+        source: '/:path*',
         headers: [
           {
             key: 'Permissions-Policy',

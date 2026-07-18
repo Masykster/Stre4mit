@@ -67,7 +67,7 @@ export default function HeroBanner({ items }) {
   const mediaType = currentItem.media_type || 'movie';
   const title = currentItem.title || currentItem.name;
   const synopsis = currentItem.overview || 'Tidak ada sinopsis tersedia.';
-  const watchHref = mediaType === 'tv' ? `/watch/tv/${currentItem.id}/1/1` : `/watch/movie/${currentItem.id}`;
+  const watchHref = mediaType === 'tv' ? `/watch/tv/${currentItem.id}/1/1` : `/movie/${currentItem.id}?play=true`;
   const detailHref = `/${mediaType}/${currentItem.id}`;
 
   return (
@@ -120,10 +120,23 @@ export default function HeroBanner({ items }) {
           )}
         </div>
 
-        {/* Title */}
-        <h1 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tight text-white drop-shadow-lg leading-tight">
-          {title}
-        </h1>
+        {/* Title or Logo */}
+        {currentItem.logoUrl ? (
+          <div className="relative h-14 sm:h-16 md:h-20 lg:h-24 w-full max-w-[280px] sm:max-w-[340px] md:max-w-[400px] select-none mb-1">
+            <Image
+              src={currentItem.logoUrl}
+              alt={title}
+              fill
+              sizes="(max-width: 768px) 280px, (max-width: 1024px) 340px, 400px"
+              className="object-contain object-left"
+              priority
+            />
+          </div>
+        ) : (
+          <h1 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tight text-white drop-shadow-lg leading-tight">
+            {title}
+          </h1>
+        )}
 
         {/* Synopsis */}
         <p className="text-xs md:text-sm text-zinc-300 line-clamp-3 md:line-clamp-4 max-w-2xl leading-relaxed drop-shadow-md">

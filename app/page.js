@@ -57,11 +57,36 @@ function MovieRowSkeleton() {
 // Lazy components using React Suspense for server-side HTML streaming
 async function LazyHeroBanner() {
   const data = await fetchFromTMDb('trending/all/day', { include_adult: 'false' });
-  const items = data?.results
+  const rawItems = data?.results
     ?.filter(item => item.backdrop_path && (item.title || item.name) && !item.adult)
     ?.slice(0, 5) || [];
 
-  if (items.length === 0) return null;
+  if (rawItems.length === 0) return null;
+
+  // Fetch details with images in parallel to get their logos
+  const items = await Promise.all(
+    rawItems.map(async (item) => {
+      try {
+        const details = await fetchFromTMDb(`${item.media_type}/${item.id}`, { append_to_response: 'images' });
+        if (!details) return item;
+
+        const logos = details.images?.logos || [];
+        const logo = logos.find(l => l.iso_639_1 === 'id') ||
+                     logos.find(l => l.iso_639_1 === 'en') ||
+                     logos[0];
+        const logoUrl = logo ? `https://image.tmdb.org/t/p/w500${logo.file_path}` : null;
+
+        return {
+          ...item,
+          logoUrl,
+        };
+      } catch (err) {
+        console.error(`Failed to fetch details for trending ${item.media_type}:`, err);
+        return item;
+      }
+    })
+  );
+
   return <HeroBanner items={items} />;
 }
 

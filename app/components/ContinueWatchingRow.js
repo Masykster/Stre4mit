@@ -5,17 +5,23 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Play, Trash2 } from 'lucide-react';
 
+import useDragScroll from '../hooks/useDragScroll';
+
 export default function ContinueWatchingRow() {
   const { history, removeFromHistory, isLoaded } = useApp();
+  const scrollRef = useDragScroll();
 
   if (!isLoaded || history.length === 0) return null;
 
   return (
     <div className="space-y-3 px-4 md:px-8">
-      <h2 className="text-lg md:text-xl font-bold text-zinc-100 tracking-tight">
+      <h2 className="text-lg md:text-xl font-bold text-zinc-100 tracking-tight select-none">
         Lanjutkan Menonton
       </h2>
-      <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar scroll-smooth snap-x">
+      <div 
+        ref={scrollRef}
+        className="flex gap-4 overflow-x-auto pb-4 no-scrollbar scroll-smooth snap-x cursor-grab active:cursor-grabbing select-none"
+      >
         {history.map((item) => {
           const mediaType = item.media_type || 'movie';
           const isTV = mediaType === 'tv';

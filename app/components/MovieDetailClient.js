@@ -1,71 +1,117 @@
+"use client";
+
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import { Play, Star, Calendar, Tv } from 'lucide-react';
-import WatchlistButton from '../../components/WatchlistButton';
-import MovieCard from '../../components/MovieCard';
-import EpisodeSelector from '../../components/EpisodeSelector';
+import { Play, Star, Clock, Calendar, X } from 'lucide-react';
+import WatchlistButton from './WatchlistButton';
+import MovieCard from './MovieCard';
+import { useApp } from '../context/AppContext';
 
-async function getTVData(id) {
-  const apiKey = process.env.TMDB_API_KEY;
-  if (!apiKey || apiKey === 'your_tmdb_api_key_here') return null;
+export default function MovieDetailClient({
+  data,
+  title,
+  rating,
+  year,
+  runtime,
+  genres,
+  overview,
+  cast,
+  recommendations,
+  logoUrl,
+}) {
+  const { addToHistory, isLoaded } = useApp();
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [source, setSource] = useState('vidsrc-embed.ru');
 
-  const url = `https://api.themoviedb.org/3/tv/${id}?api_key=${apiKey}&append_to_response=credits,recommendations,images`;
-  try {
-    const res = await fetch(url, { next: { revalidate: 3600 } });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (err) {
-    console.error(err);
-    return null;
-  }
-}
+  // Add to watch history when playing starts
+  useEffect(() => {
+    if (isPlaying && isLoaded) {
+      addToHistory({
+        id: data.id,
+        media_type: 'movie',
+        title,
+        name: title,
+        backdrop_path: data.backdrop_path,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPlaying, isLoaded]);
 
-export default async function TVDetails({ params }) {
-  const resolvedParams = await params;
-  const data = await getTVData(resolvedParams.id);
+  const handlePlay = () => {
+    setIsPlaying(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
-  if (!data) {
-    notFound();
-  }
-
-  const title = data.name;
-  const rating = data.vote_average ? data.vote_average.toFixed(1) : null;
-  const year = data.first_air_date ? data.first_air_date.split('-')[0] : '';
-  const seasonsInfo = data.number_of_seasons ? `${data.number_of_seasons} Musim` : '';
-  const episodesInfo = data.number_of_episodes ? `${data.number_of_episodes} Episode` : '';
-  const genres = data.genres || [];
-  const overview = data.overview || 'Sinopsis belum tersedia.';
-  const cast = data.credits?.cast?.slice(0, 6) || [];
-  const recommendations = (data.recommendations?.results || []).filter(item => !item.adult).slice(0, 6);
-  const watchUrl = `/watch/tv/${data.id}/1/1`;
-
-  const logos = data.images?.logos || [];
-  const logo = logos.find(l => l.iso_639_1 === 'id') ||
-               logos.find(l => l.iso_639_1 === 'en') ||
-               logos[0];
-  const logoUrl = logo ? `https://image.tmdb.org/t/p/w500${logo.file_path}` : null;
+  const embedUrl = source === 'vidsrc-embed.ru'
+    ? `https://vidsrc-embed.ru/embed/movie/${data.id}`
+    : source === 'vidlink.pro'
+    ? `https://vidlink.pro/movie/${data.id}?primaryColor=dc2626&secondaryColor=18181b&iconColor=dc2626&icons=vid`
+    : source === 'videasy'
+    ? `https://player.videasy.net/movie/${data.id}?color=dc2626&overlay=true`
+    : source === 'superembed'
+    ? `https://multiembed.mov/?video_id=${data.id}&tmdb=1`
+    : source === 'smashystream'
+    ? `https://embed.smashystream.com/playere.php?tmdb=${data.id}`
+    : source === '2embed'
+    ? `https://www.2embed.cc/embed/${data.id}`
+    : `https://vidsrc.to/embed/movie/${data.id}`;
 
   return (
     <div className="relative min-h-screen pb-16 bg-black text-zinc-100">
-      {/* Blurred Backdrop Background */}
-      <div className="absolute top-0 left-0 right-0 h-[60vh] overflow-hidden select-none z-0">
-        {data.backdrop_path && (
+      {/* Backdrop / Player Area */}
+      <div
+        className={
+          isPlaying
+            ? 'relative w-full bg-black z-20'
+            : 'absolute top-0 left-0 right-0 h-[60vh] overflow-hidden select-none z-0'
+        }
+      >
+        {isPlaying ? (
+          /* ── Video Player ── */
+          <div className="max-w-6xl mx-auto px-4 pt-20 pb-4">
+            <div className="relative aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border border-zinc-900">
+              <iframe
+                key={source}
+                src={embedUrl}
+                title={title}
+                className="w-full h-full border-none"
+                allowFullScreen={true}
+                webkitallowfullscreen="true"
+                mozallowfullscreen="true"
+                allow="autoplay *; fullscreen *; encrypted-media *; picture-in-picture *"
+              />
+              {/* Close player button */}
+              <button
+                onClick={() => setIsPlaying(false)}
+                className="absolute top-3 right-3 bg-black/70 text-white p-2 rounded-full hover:bg-red-600 transition-colors z-30 active:scale-95 border border-zinc-700/50"
+                title="Tutup Player"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* ── Backdrop ── */
           <>
-            <Image
-              src={`https://image.tmdb.org/t/p/w1280${data.backdrop_path}`}
-              alt={title}
-              fill
-              priority
-              className="object-cover opacity-30 blur-xs"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent" />
+            {data.backdrop_path && (
+              <>
+                <Image
+                  src={`https://image.tmdb.org/t/p/w1280${data.backdrop_path}`}
+                  alt={title}
+                  fill
+                  priority
+                  className="object-cover opacity-30 blur-xs"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent" />
+              </>
+            )}
           </>
         )}
       </div>
 
       {/* Content Container */}
-      <div className="relative z-10 max-w-6xl mx-auto px-4 pt-10 sm:pt-16">
+      <div className={`relative z-10 max-w-6xl mx-auto px-4 ${isPlaying ? 'pt-8' : 'pt-10 sm:pt-16'}`}>
         <div className="flex flex-col md:flex-row gap-8 items-start">
           {/* Left: Poster */}
           <div className="relative w-44 sm:w-60 aspect-[2/3] bg-zinc-900 rounded-xl overflow-hidden shadow-2xl border border-zinc-800/80 mx-auto md:mx-0 flex-shrink-0">
@@ -87,6 +133,7 @@ export default async function TVDetails({ params }) {
           {/* Right: Info */}
           <div className="flex-grow space-y-6 text-center md:text-left">
             <div className="space-y-3">
+              {/* Title / Logo */}
               {logoUrl ? (
                 <div className="relative h-20 md:h-28 w-full max-w-[280px] sm:max-w-[340px] md:max-w-[400px] mx-auto md:mx-0 select-none">
                   <Image
@@ -113,15 +160,15 @@ export default async function TVDetails({ params }) {
                   </div>
                 )}
                 {year && (
-                  <Link href={`/discover?type=tv&year=${year}`} className="flex items-center gap-1 hover:text-red-500 transition-colors duration-150">
+                  <Link href={`/discover?type=movie&year=${year}`} className="flex items-center gap-1 hover:text-red-500 transition-colors duration-150">
                     <Calendar size={16} className="text-zinc-500" />
                     <span>{year}</span>
                   </Link>
                 )}
-                {seasonsInfo && (
+                {runtime && (
                   <div className="flex items-center gap-1">
-                    <Tv size={16} className="text-zinc-500" />
-                    <span>{seasonsInfo} ({episodesInfo})</span>
+                    <Clock size={16} className="text-zinc-500" />
+                    <span>{runtime}</span>
                   </div>
                 )}
               </div>
@@ -138,16 +185,32 @@ export default async function TVDetails({ params }) {
 
             {/* Actions */}
             <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-3 pt-2">
-              <Link
-                href={watchUrl}
+              <button
+                onClick={handlePlay}
                 className="w-full sm:w-auto flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold text-sm md:text-base px-8 h-11 rounded-full transition-all duration-150"
               >
                 <Play size={18} className="fill-white" />
-                Mulai Nonton
-              </Link>
+                {isPlaying ? 'Kembali ke Player' : 'Nonton Sekarang'}
+              </button>
               <div className="w-full sm:w-auto">
                 <WatchlistButton item={data} />
               </div>
+              {/* Server Selector — far right */}
+              <select
+                id="movie-source-selector"
+                name="source"
+                value={source}
+                onChange={(e) => setSource(e.target.value)}
+                className="w-full sm:w-auto sm:ml-auto bg-zinc-900 text-zinc-300 text-xs font-semibold px-4 h-11 rounded-full border border-zinc-800 focus:outline-none focus:border-red-600 cursor-pointer"
+              >
+                <option value="vidsrc-embed.ru">Server 1 (vidsrc-embed.ru)</option>
+                <option value="vidlink.pro">Server 2 (vidlink.pro)</option>
+                <option value="videasy">Server 3 (videasy.net)</option>
+                <option value="superembed">Server 4 (superembed.mov)</option>
+                <option value="smashystream">Server 5 (smashystream)</option>
+                <option value="2embed">Server 6 (2embed.cc)</option>
+                <option value="vidsrc.to">Server 7 (vidsrc.to)</option>
+              </select>
             </div>
 
             {/* Overview / Synopsis */}
@@ -175,7 +238,7 @@ export default async function TVDetails({ params }) {
                             className="object-cover"
                           />
                         ) : (
-                          <div className="absolute inset-0 flex items-center justify-center text-[8px] text-zinc-655 font-bold">
+                          <div className="absolute inset-0 flex items-center justify-center text-[8px] text-zinc-650 font-bold">
                             No Pic
                           </div>
                         )}
@@ -192,18 +255,13 @@ export default async function TVDetails({ params }) {
           </div>
         </div>
 
-        {/* Season & Episode Selector */}
-        <div className="mt-16 pt-10 border-t border-zinc-900">
-          <EpisodeSelector tvId={data.id} seasons={data.seasons} />
-        </div>
-
         {/* Recommendations Section */}
         {recommendations.length > 0 && (
           <div className="space-y-4 mt-16 pt-10 border-t border-zinc-900">
             <h2 className="text-lg md:text-xl font-bold text-white">Rekomendasi Terkait</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
               {recommendations.map((item) => (
-                <MovieCard key={item.id} item={{ ...item, media_type: 'tv' }} />
+                <MovieCard key={item.id} item={{ ...item, media_type: 'movie' }} />
               ))}
             </div>
           </div>

@@ -168,8 +168,7 @@ export default function VideoPlayer({ id, type, title, backdropPath, season, epi
           allowFullScreen={true}
           webkitallowfullscreen="true"
           mozallowfullscreen="true"
-          referrerPolicy="no-referrer"
-          allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+          allow="autoplay *; fullscreen *; encrypted-media *; picture-in-picture *"
         />
 
         {/* Floating Overlay Controls — hidden in fullscreen */}
