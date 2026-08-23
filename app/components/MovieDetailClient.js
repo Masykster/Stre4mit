@@ -7,6 +7,7 @@ import { Play, Star, Clock, Calendar, X } from 'lucide-react';
 import WatchlistButton from './WatchlistButton';
 import MovieCard from './MovieCard';
 import { useApp } from '../context/AppContext';
+import { VIDEO_SOURCES, getEmbedUrl, DEFAULT_SOURCE } from '../lib/videoSources';
 
 export default function MovieDetailClient({
   data,
@@ -22,7 +23,7 @@ export default function MovieDetailClient({
 }) {
   const { addToHistory, isLoaded } = useApp();
   const [isPlaying, setIsPlaying] = useState(false);
-  const [source, setSource] = useState('vidsrc-embed.ru');
+  const [source, setSource] = useState(DEFAULT_SOURCE);
 
   // Add to watch history when playing starts
   useEffect(() => {
@@ -43,19 +44,7 @@ export default function MovieDetailClient({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const embedUrl = source === 'vidsrc-embed.ru'
-    ? `https://vidsrc-embed.ru/embed/movie/${data.id}`
-    : source === 'vidlink.pro'
-    ? `https://vidlink.pro/movie/${data.id}?primaryColor=dc2626&secondaryColor=18181b&iconColor=dc2626&icons=vid`
-    : source === 'videasy'
-    ? `https://player.videasy.net/movie/${data.id}?color=dc2626&overlay=true`
-    : source === 'superembed'
-    ? `https://multiembed.mov/?video_id=${data.id}&tmdb=1`
-    : source === 'smashystream'
-    ? `https://embed.smashystream.com/playere.php?tmdb=${data.id}`
-    : source === '2embed'
-    ? `https://www.2embed.cc/embed/${data.id}`
-    : `https://vidsrc.to/embed/movie/${data.id}`;
+  const embedUrl = getEmbedUrl(source, 'movie', data.id);
 
   return (
     <div className="relative min-h-screen pb-16 bg-black text-zinc-100">
@@ -124,7 +113,7 @@ export default function MovieDetailClient({
                 className="object-cover"
               />
             ) : (
-              <div className="absolute inset-0 flex items-center justify-center text-zinc-550 font-bold p-4 text-center">
+              <div className="absolute inset-0 flex items-center justify-center text-zinc-500 font-bold p-4 text-center">
                 {title}
               </div>
             )}
@@ -203,13 +192,9 @@ export default function MovieDetailClient({
                 onChange={(e) => setSource(e.target.value)}
                 className="w-full sm:w-auto sm:ml-auto bg-zinc-900 text-zinc-300 text-xs font-semibold px-4 h-11 rounded-full border border-zinc-800 focus:outline-none focus:border-red-600 cursor-pointer"
               >
-                <option value="vidsrc-embed.ru">Server 1 (vidsrc-embed.ru)</option>
-                <option value="vidlink.pro">Server 2 (vidlink.pro)</option>
-                <option value="videasy">Server 3 (videasy.net)</option>
-                <option value="superembed">Server 4 (superembed.mov)</option>
-                <option value="smashystream">Server 5 (smashystream)</option>
-                <option value="2embed">Server 6 (2embed.cc)</option>
-                <option value="vidsrc.to">Server 7 (vidsrc.to)</option>
+                {VIDEO_SOURCES.map((s) => (
+                  <option key={s.value} value={s.value}>{s.optionLabel}</option>
+                ))}
               </select>
             </div>
 
@@ -238,7 +223,7 @@ export default function MovieDetailClient({
                             className="object-cover"
                           />
                         ) : (
-                          <div className="absolute inset-0 flex items-center justify-center text-[8px] text-zinc-650 font-bold">
+                          <div className="absolute inset-0 flex items-center justify-center text-[8px] text-zinc-600 font-bold">
                             No Pic
                           </div>
                         )}

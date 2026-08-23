@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Search, Heart, X } from 'lucide-react';
+import { YEARS } from '../lib/discover';
 
 export default function NavigationBar() {
   const [query, setQuery] = useState('');
@@ -22,12 +23,15 @@ export default function NavigationBar() {
     }
   };
 
-  // Close dropdown on path change
-  useEffect(() => {
+  // Close dropdown & clear search on path change — adjusted during render
+  // instead of inside an effect to avoid cascading re-renders
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname);
     setQuery('');
     setResults([]);
     setIsOpen(false);
-  }, [pathname]);
+  }
 
   // Click outside listener
   useEffect(() => {
@@ -40,34 +44,53 @@ export default function NavigationBar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Debounced search
-  useEffect(() => {
+  // Clear stale results immediately when the query is emptied — adjusted
+  // during render instead of inside an effect to avoid cascading re-renders
+  const [prevQuery, setPrevQuery] = useState(query);
+  if (prevQuery !== query) {
+    setPrevQuery(query);
     if (!query.trim()) {
       setResults([]);
       setIsOpen(false);
-      return;
     }
+  }
+
+  // Debounced search with abort support so stale responses can never
+  // overwrite results for a newer query
+  useEffect(() => {
+    if (!query.trim()) return;
+
+    let cancelled = false;
+    const controller = new AbortController();
 
     const delayDebounceFn = setTimeout(async () => {
       setLoading(true);
       setIsOpen(true);
       try {
-        const res = await fetch(`/api/tmdb/search/multi?query=${encodeURIComponent(query)}&include_adult=false`);
+        const res = await fetch(`/api/tmdb/search/multi?query=${encodeURIComponent(query)}&include_adult=false`, {
+          signal: controller.signal,
+        });
         const data = await res.json();
-        if (data.results) {
+        if (!cancelled && data.results) {
           const filtered = data.results
             .filter((item) => (item.media_type === 'movie' || item.media_type === 'tv') && (item.poster_path || item.backdrop_path) && !item.adult)
             .slice(0, 6);
           setResults(filtered);
         }
       } catch (err) {
-        console.error("Search failed:", err);
+        if (err.name !== 'AbortError') {
+          console.error("Search failed:", err);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }, 400);
 
-    return () => clearTimeout(delayDebounceFn);
+    return () => {
+      cancelled = true;
+      clearTimeout(delayDebounceFn);
+      controller.abort();
+    };
   }, [query]);
 
   return (
@@ -107,9 +130,9 @@ export default function NavigationBar() {
               
               <div className="text-[10px] uppercase font-bold text-zinc-500 px-3 py-1 border-b border-zinc-900/50 my-1">Tahun</div>
               <div className="grid grid-cols-3 gap-1 px-2 py-1">
-                <Link href="/discover?anime=true&year=2026" className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">2026</Link>
-                <Link href="/discover?anime=true&year=2025" className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">2025</Link>
-                <Link href="/discover?anime=true&year=2024" className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">2024</Link>
+                {YEARS.slice(0, 3).map((y) => (
+                  <Link key={y.value} href={`/discover?anime=true&year=${y.value}`} className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">{y.label}</Link>
+                ))}
               </div>
             </div>
           </div>
@@ -130,9 +153,9 @@ export default function NavigationBar() {
               
               <div className="text-[10px] uppercase font-bold text-zinc-500 px-3 py-1 border-b border-zinc-900/50 my-1">Tahun</div>
               <div className="grid grid-cols-3 gap-1 px-2 py-1">
-                <Link href="/discover?type=movie&year=2026" className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">2026</Link>
-                <Link href="/discover?type=movie&year=2025" className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">2025</Link>
-                <Link href="/discover?type=movie&year=2024" className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">2024</Link>
+                {YEARS.slice(0, 3).map((y) => (
+                  <Link key={y.value} href={`/discover?type=movie&year=${y.value}`} className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">{y.label}</Link>
+                ))}
               </div>
             </div>
           </div>
@@ -153,9 +176,9 @@ export default function NavigationBar() {
               
               <div className="text-[10px] uppercase font-bold text-zinc-500 px-3 py-1 border-b border-zinc-900/50 my-1">Tahun</div>
               <div className="grid grid-cols-3 gap-1 px-2 py-1">
-                <Link href="/discover?type=tv&year=2026" className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">2026</Link>
-                <Link href="/discover?type=tv&year=2025" className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">2025</Link>
-                <Link href="/discover?type=tv&year=2024" className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">2024</Link>
+                {YEARS.slice(0, 3).map((y) => (
+                  <Link key={y.value} href={`/discover?type=tv&year=${y.value}`} className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">{y.label}</Link>
+                ))}
               </div>
             </div>
           </div>
@@ -180,9 +203,9 @@ export default function NavigationBar() {
               
               <div className="text-[10px] uppercase font-bold text-zinc-500 px-3 py-1 border-b border-zinc-900/50 my-1">Tahun</div>
               <div className="grid grid-cols-3 gap-1 px-2 py-1">
-                <Link href="/discover?drama=true&year=2026" className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">2026</Link>
-                <Link href="/discover?drama=true&year=2025" className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">2025</Link>
-                <Link href="/discover?drama=true&year=2024" className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">2024</Link>
+                {YEARS.slice(0, 3).map((y) => (
+                  <Link key={y.value} href={`/discover?drama=true&year=${y.value}`} className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">{y.label}</Link>
+                ))}
               </div>
             </div>
           </div>
@@ -213,13 +236,9 @@ export default function NavigationBar() {
             </button>
             <div className="absolute left-0 mt-0 w-32 bg-zinc-950 border border-zinc-900 rounded-lg shadow-2xl hidden group-hover:block z-50">
               <div className="py-1">
-                <Link href="/discover?year=2026" className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">2026</Link>
-                <Link href="/discover?year=2025" className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">2025</Link>
-                <Link href="/discover?year=2024" className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">2024</Link>
-                <Link href="/discover?year=2023" className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">2023</Link>
-                <Link href="/discover?year=2022" className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">2022</Link>
-                <Link href="/discover?year=2021" className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">2021</Link>
-                <Link href="/discover?year=2020" className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">2020</Link>
+                {YEARS.map((y) => (
+                  <Link key={y.value} href={`/discover?year=${y.value}`} className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">{y.label}</Link>
+                ))}
               </div>
             </div>
           </div>
@@ -247,7 +266,7 @@ export default function NavigationBar() {
             onKeyDown={handleSearchSubmit}
             onFocus={() => query.trim() && setIsOpen(true)}
             aria-label="Cari konten"
-            className="w-full h-10 pl-10 pr-8 bg-zinc-900/80 text-zinc-100 rounded-full border border-zinc-800 text-sm focus:outline-none focus:border-red-650 focus:bg-zinc-900 transition-colors duration-150 placeholder-zinc-550"
+            className="w-full h-10 pl-10 pr-8 bg-zinc-900/80 text-zinc-100 rounded-full border border-zinc-800 text-sm focus:outline-none focus:border-red-600 focus:bg-zinc-900 transition-colors duration-150 placeholder-zinc-500"
           />
           <Search size={18} className="absolute left-3.5 top-2.5 text-zinc-500" />
           {query && (

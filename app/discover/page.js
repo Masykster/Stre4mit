@@ -1,99 +1,28 @@
 import DiscoverList from '../components/DiscoverList';
 import Link from 'next/link';
 import { ArrowLeft, Film } from 'lucide-react';
+import { buildDiscoverRequest, mapDiscoverResults, MONTHS } from '../lib/discover';
 
 async function getDiscoverData(searchParams) {
   const apiKey = process.env.TMDB_API_KEY;
   if (!apiKey || apiKey === 'your_tmdb_api_key_here') return [];
 
-  const { type, genre, year, month, anime, drama, sortBy, subType } = searchParams;
-  let endpoint = 'discover/movie';
-  
-  if (type === 'tv') {
-    endpoint = 'discover/tv';
-  } else if (type === 'movie') {
-    endpoint = 'discover/movie';
-  } else if (anime === 'true') {
-    endpoint = subType === 'movie' ? 'discover/movie' : 'discover/tv';
-  } else if (drama === 'true') {
-    endpoint = subType === 'tv' ? 'discover/tv' : 'discover/movie';
-  } else if (genre) {
-    endpoint = 'discover/movie';
-  }
+  // Shared query builder keeps this in sync with client-side pagination
+  const { endpoint, query, mediaType } = buildDiscoverRequest(searchParams);
 
-  // Determine sorting parameter
-  let tmdbSortBy = 'primary_release_date.desc';
-  if (endpoint === 'discover/tv') {
-    tmdbSortBy = 'first_air_date.desc';
-  }
-  
-  if (sortBy === 'popularity') {
-    tmdbSortBy = 'popularity.desc';
-  } else if (sortBy === 'title') {
-    tmdbSortBy = endpoint === 'discover/tv' ? 'original_name.asc' : 'original_title.asc';
-  } else if (sortBy === 'release_date') {
-    tmdbSortBy = endpoint === 'discover/tv' ? 'first_air_date.desc' : 'primary_release_date.desc';
-  }
+  // Server-side fetch hits TMDb directly, so the API key is attached here
+  // (client requests go through /api/tmdb which injects the key instead).
+  const authorizedQuery = new URLSearchParams(query);
+  authorizedQuery.set('api_key', apiKey);
 
-  const query = new URLSearchParams({
-    api_key: apiKey,
-    sort_by: tmdbSortBy,
-    include_adult: 'false',
-    language: 'id-ID',
-  });
-
-  const today = new Date().toISOString().split('T')[0];
-
-  if (endpoint === 'discover/tv') {
-    query.set('first_air_date.lte', today);
-  } else {
-    query.set('primary_release_date.lte', today);
-  }
-
-  if (anime === 'true') {
-    query.set('with_genres', '16'); // Animation
-    query.set('with_original_language', 'ja'); // Japanese language (commonly Anime)
-  } else if (drama === 'true') {
-    query.set('with_genres', '18'); // Drama
-  } else if (genre) {
-    query.set('with_genres', genre);
-  }
-
-  // Date Filtering by Year and Month
-  if (month) {
-    const yearVal = year || new Date().getFullYear();
-    const monthStr = String(month).padStart(2, '0');
-    const startDate = `${yearVal}-${monthStr}-01`;
-    const lastDay = new Date(parseInt(yearVal), parseInt(monthStr), 0).getDate();
-    const endDate = `${yearVal}-${monthStr}-${String(lastDay).padStart(2, '0')}`;
-    
-    if (endpoint === 'discover/tv') {
-      query.set('first_air_date.gte', startDate);
-      query.set('first_air_date.lte', endDate);
-    } else {
-      query.set('primary_release_date.gte', startDate);
-      query.set('primary_release_date.lte', endDate);
-    }
-  } else if (year) {
-    if (endpoint === 'discover/tv') {
-      query.set('first_air_date_year', year);
-    } else {
-      query.set('primary_release_year', year);
-    }
-  }
-
-  const url = `https://api.themoviedb.org/3/${endpoint}?${query.toString()}`;
+  const url = `https://api.themoviedb.org/3/${endpoint}?${authorizedQuery.toString()}`;
   try {
     const res = await fetch(url, { next: { revalidate: 3600 } });
     if (!res.ok) return [];
     const data = await res.json();
-    
+
     // Explicitly set media_type on items so MovieCard handles navigation routes correctly
-    const items = (data.results || []).filter(item => !item.adult);
-    return items.map(item => ({
-      ...item,
-      media_type: endpoint === 'discover/tv' ? 'tv' : 'movie'
-    }));
+    return mapDiscoverResults(data.results, mediaType);
   } catch (err) {
     console.error("Discover fetch error:", err);
     return [];
@@ -112,15 +41,13 @@ export default async function DiscoverPage({ searchParams }) {
   
   if (year) {
     if (month) {
-      const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-      const monthName = monthNames[parseInt(month) - 1] || "";
+      const monthName = MONTHS[parseInt(month) - 1]?.label || "";
       suffix = ` (${monthName} ${year})`;
     } else {
       suffix = ` (${year})`;
     }
   } else if (month) {
-    const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-    const monthName = monthNames[parseInt(month) - 1] || "";
+    const monthName = MONTHS[parseInt(month) - 1]?.label || "";
     suffix = ` (${monthName})`;
   }
 
@@ -180,8 +107,8 @@ export default async function DiscoverPage({ searchParams }) {
         ) : (
           <div className="flex flex-col items-center justify-center py-20 text-center max-w-md mx-auto space-y-4">
             <Film className="text-zinc-700 w-16 h-16 animate-pulse" />
-            <h2 className="text-lg font-bold text-zinc-305">Konten Tidak Ditemukan</h2>
-            <p className="text-xs text-zinc-455 leading-relaxed">
+            <h2 className="text-lg font-bold text-zinc-300">Konten Tidak Ditemukan</h2>
+            <p className="text-xs text-zinc-400 leading-relaxed">
               Maaf, tidak ada hasil yang cocok untuk filter ini. Silakan kembali ke halaman utama untuk menelusuri konten menarik lainnya.
             </p>
             <Link 

@@ -4,12 +4,13 @@ import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { Maximize2, ArrowLeft, ChevronLeft, ChevronRight, Tv } from 'lucide-react';
 import Link from 'next/link';
+import { VIDEO_SOURCES, getEmbedUrl, DEFAULT_SOURCE } from '../lib/videoSources';
 
 export default function VideoPlayer({ id, type, title, backdropPath, season, episode, nextEpisodeHref, prevEpisodeHref }) {
   const { addToHistory, isLoaded } = useApp();
   const [theaterMode, setTheaterMode] = useState(false);
   // ponytail: sandbox with allow-top-navigation-by-user-activation blocks auto-redirects without triggering sbx.html 404
-  const [source, setSource] = useState('vidsrc-embed.ru');
+  const [source, setSource] = useState(DEFAULT_SOURCE);
   const playerRef = useRef(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -77,35 +78,9 @@ export default function VideoPlayer({ id, type, title, backdropPath, season, epi
         episode,
       });
     }
-  }, [id, type, title, backdropPath, season, episode, isLoaded]);
+  }, [id, type, title, backdropPath, season, episode, isLoaded, addToHistory]);
 
-  const embedUrl = source === 'vidsrc-embed.ru'
-    ? (type === 'tv'
-        ? `https://vidsrc-embed.ru/embed/tv/${id}/${season}-${episode}`
-        : `https://vidsrc-embed.ru/embed/movie/${id}`)
-    : source === 'vidlink.pro'
-    ? (type === 'tv'
-        ? `https://vidlink.pro/tv/${id}/${season}/${episode}?primaryColor=dc2626&secondaryColor=18181b&iconColor=dc2626&icons=vid&nextbutton=true`
-        : `https://vidlink.pro/movie/${id}?primaryColor=dc2626&secondaryColor=18181b&iconColor=dc2626&icons=vid`)
-    : source === 'videasy'
-    ? (type === 'tv'
-        ? `https://player.videasy.net/tv/${id}/${season}/${episode}?color=dc2626&nextEpisode=true&autoplayNextEpisode=true&episodeSelector=true&overlay=true`
-        : `https://player.videasy.net/movie/${id}?color=dc2626&overlay=true`)
-    : source === 'superembed'
-    ? (type === 'tv'
-        ? `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${season}&e=${episode}`
-        : `https://multiembed.mov/?video_id=${id}&tmdb=1`)
-    : source === 'smashystream'
-    ? (type === 'tv'
-        ? `https://embed.smashystream.com/playere.php?tmdb=${id}&season=${season}&episode=${episode}`
-        : `https://embed.smashystream.com/playere.php?tmdb=${id}`)
-    : source === '2embed'
-    ? (type === 'tv'
-        ? `https://www.2embed.cc/embedtv/${id}?s=${season}&e=${episode}`
-        : `https://www.2embed.cc/embed/${id}`)
-    : (type === 'tv' 
-        ? `https://vidsrc.to/embed/tv/${id}/${season}/${episode}`
-        : `https://vidsrc.to/embed/movie/${id}`);
+  const embedUrl = getEmbedUrl(source, type, id, season, episode);
 
   return (
     <div className={`space-y-6 ${theaterMode ? 'w-full max-w-full' : 'max-w-5xl mx-auto px-4'}`}>
@@ -136,15 +111,11 @@ export default function VideoPlayer({ id, type, title, backdropPath, season, epi
               name="source"
               value={source}
               onChange={(e) => setSource(e.target.value)}
-              className="bg-zinc-900 text-zinc-300 text-xs font-semibold px-3 py-1.5 rounded-lg border border-zinc-800 focus:outline-none focus:border-red-655 cursor-pointer"
+              className="bg-zinc-900 text-zinc-300 text-xs font-semibold px-3 py-1.5 rounded-lg border border-zinc-800 focus:outline-none focus:border-red-600 cursor-pointer"
             >
-              <option value="vidsrc-embed.ru">Vidsrc-embed.ru</option>
-              <option value="vidlink.pro">Vidlink.pro</option>
-              <option value="videasy">Videasy.net</option>
-              <option value="superembed">Superembed.mov</option>
-              <option value="smashystream">SmashyStream</option>
-              <option value="2embed">2embed.cc</option>
-              <option value="vidsrc.to">Vidsrc.to</option>
+              {VIDEO_SOURCES.map((s) => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -252,15 +223,11 @@ export default function VideoPlayer({ id, type, title, backdropPath, season, epi
               name="source"
               value={source}
               onChange={(e) => setSource(e.target.value)}
-              className="bg-zinc-900 text-zinc-300 text-xs font-semibold px-4 h-11 rounded-full border border-zinc-800 focus:outline-none focus:border-red-650 cursor-pointer"
+              className="bg-zinc-900 text-zinc-300 text-xs font-semibold px-4 h-11 rounded-full border border-zinc-800 focus:outline-none focus:border-red-600 cursor-pointer"
             >
-              <option value="vidsrc-embed.ru">Server 1 (vidsrc-embed.ru)</option>
-              <option value="vidlink.pro">Server 2 (vidlink.pro)</option>
-              <option value="videasy">Server 3 (videasy.net)</option>
-              <option value="superembed">Server 4 (superembed.mov)</option>
-              <option value="smashystream">Server 5 (smashystream.com)</option>
-              <option value="2embed">Server 6 (2embed.cc)</option>
-              <option value="vidsrc.to">Server 7 (vidsrc.to)</option>
+              {VIDEO_SOURCES.map((s) => (
+                <option key={s.value} value={s.value}>{s.optionLabel}</option>
+              ))}
             </select>
           </div>
         )}

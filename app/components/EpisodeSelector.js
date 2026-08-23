@@ -46,7 +46,7 @@ export default function EpisodeSelector({ tvId, seasons }) {
             name="season"
             value={selectedSeason}
             onChange={(e) => setSelectedSeason(Number(e.target.value))}
-            className="bg-zinc-900 text-zinc-100 pl-4 pr-8 py-2 rounded-lg border border-zinc-800 text-xs sm:text-sm font-semibold focus:outline-none focus:border-red-650 cursor-pointer appearance-none"
+            className="bg-zinc-900 text-zinc-100 pl-4 pr-8 py-2 rounded-lg border border-zinc-800 text-xs sm:text-sm font-semibold focus:outline-none focus:border-red-600 cursor-pointer appearance-none"
           >
             {validSeasons.map((s) => (
               <option key={s.id} value={s.season_number}>
@@ -76,7 +76,7 @@ export default function EpisodeSelector({ tvId, seasons }) {
               <Link 
                 key={ep.id}
                 href={watchUrl}
-                className="group flex gap-3 p-3 bg-zinc-900 hover:bg-zinc-800/80 border border-zinc-850 hover:border-zinc-700/60 rounded-xl transition-all duration-150"
+                className="group flex gap-3 p-3 bg-zinc-900 hover:bg-zinc-800/80 border border-zinc-800 hover:border-zinc-700/60 rounded-xl transition-all duration-150"
               >
                 {/* Episode Backdrop Thumbnail */}
                 <div className="relative w-24 sm:w-32 aspect-video bg-zinc-950 rounded-lg overflow-hidden flex-shrink-0">

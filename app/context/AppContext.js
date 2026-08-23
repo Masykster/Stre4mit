@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 const AppContext = createContext();
 
@@ -9,26 +9,32 @@ export function AppProvider({ children }) {
   const [history, setHistory] = useState([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load from localStorage on mount
+  // Load from localStorage on mount. State updates are deferred to the next
+  // animation frame so the synchronous effect body never triggers cascading
+  // re-renders right after hydration.
   useEffect(() => {
-    const savedWatchlist = localStorage.getItem('stre4mit_watchlist');
-    const savedHistory = localStorage.getItem('stre4mit_history');
+    const frame = requestAnimationFrame(() => {
+      const savedWatchlist = localStorage.getItem('stre4mit_watchlist');
+      const savedHistory = localStorage.getItem('stre4mit_history');
 
-    if (savedWatchlist) {
-      try {
-        setWatchlist(JSON.parse(savedWatchlist));
-      } catch (e) {
-        console.error("Failed to parse watchlist", e);
+      if (savedWatchlist) {
+        try {
+          setWatchlist(JSON.parse(savedWatchlist));
+        } catch (e) {
+          console.error("Failed to parse watchlist", e);
+        }
       }
-    }
-    if (savedHistory) {
-      try {
-        setHistory(JSON.parse(savedHistory));
-      } catch (e) {
-        console.error("Failed to parse history", e);
+      if (savedHistory) {
+        try {
+          setHistory(JSON.parse(savedHistory));
+        } catch (e) {
+          console.error("Failed to parse history", e);
+        }
       }
-    }
-    setIsLoaded(true);
+      setIsLoaded(true);
+    });
+
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   // Save to localStorage when watchlist changes
@@ -45,24 +51,24 @@ export function AppProvider({ children }) {
     }
   }, [history, isLoaded]);
 
-  const addToWatchlist = (item) => {
+  const addToWatchlist = useCallback((item) => {
     setWatchlist((prev) => {
       // Ensure we store essential fields
       const exists = prev.some((i) => i.id === item.id && (i.media_type || 'movie') === (item.media_type || 'movie'));
       if (exists) return prev;
       return [item, ...prev];
     });
-  };
+  }, []);
 
-  const removeFromWatchlist = (id, media_type) => {
+  const removeFromWatchlist = useCallback((id, media_type) => {
     setWatchlist((prev) => prev.filter((i) => !(i.id === id && (i.media_type || 'movie') === (media_type || 'movie'))));
-  };
+  }, []);
 
-  const isInWatchlist = (id, media_type) => {
+  const isInWatchlist = useCallback((id, media_type) => {
     return watchlist.some((i) => i.id === id && (i.media_type || 'movie') === (media_type || 'movie'));
-  };
+  }, [watchlist]);
 
-  const addToHistory = (item) => {
+  const addToHistory = useCallback((item) => {
     setHistory((prev) => {
       const filtered = prev.filter((i) => !(i.id === item.id && (i.media_type || 'movie') === (item.media_type || 'movie')));
       return [
@@ -70,11 +76,11 @@ export function AppProvider({ children }) {
         ...filtered
       ].slice(0, 20); // Keep last 20 watched items
     });
-  };
+  }, []);
 
-  const removeFromHistory = (id, media_type) => {
+  const removeFromHistory = useCallback((id, media_type) => {
     setHistory((prev) => prev.filter((i) => !(i.id === id && (i.media_type || 'movie') === (media_type || 'movie'))));
-  };
+  }, []);
 
   return (
     <AppContext.Provider

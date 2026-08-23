@@ -45,7 +45,7 @@ export default function MovieCard({ item, priority = false }) {
           {title}
         </h3>
         <div className="flex items-center justify-between mt-1 text-[10px] md:text-xs text-zinc-400">
-          <span className="uppercase font-bold tracking-wider text-[9px] bg-zinc-850 px-1 py-0.5 rounded text-zinc-300">
+          <span className="uppercase font-bold tracking-wider text-[9px] bg-zinc-800 px-1 py-0.5 rounded text-zinc-300">
             {mediaType === 'tv' ? 'TV' : 'Film'}
           </span>
           <span>{year}</span>

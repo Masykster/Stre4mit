@@ -13,6 +13,22 @@ export default function HeroBanner({ items }) {
 
   const currentItem = items[currentIndex];
 
+  // Reset trailer state when the slide changes — adjusted during render
+  // instead of inside an effect to avoid cascading re-renders
+  const [prevIndex, setPrevIndex] = useState(currentIndex);
+  if (prevIndex !== currentIndex) {
+    setPrevIndex(currentIndex);
+    setTrailerKey(null);
+    setPlayTrailer(false);
+  }
+
+  // Clear any pending hover-preview timeout when the slide changes
+  useEffect(() => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+  }, [currentIndex]);
+
   // Auto rotate slides every 8 seconds if trailer is not playing
   useEffect(() => {
     if (playTrailer) return;
@@ -23,15 +39,6 @@ export default function HeroBanner({ items }) {
 
     return () => clearInterval(interval);
   }, [items.length, playTrailer]);
-
-  // Reset trailer state when slide changes
-  useEffect(() => {
-    setTrailerKey(null);
-    setPlayTrailer(false);
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-    }
-  }, [currentIndex]);
 
   const handleMouseEnter = () => {
     if (!currentItem) return;

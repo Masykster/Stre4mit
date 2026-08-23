@@ -78,7 +78,7 @@ export default async function TVDetails({ params }) {
                 className="object-cover"
               />
             ) : (
-              <div className="absolute inset-0 flex items-center justify-center text-zinc-550 font-bold p-4 text-center">
+              <div className="absolute inset-0 flex items-center justify-center text-zinc-500 font-bold p-4 text-center">
                 {title}
               </div>
             )}
@@ -175,7 +175,7 @@ export default async function TVDetails({ params }) {
                             className="object-cover"
                           />
                         ) : (
-                          <div className="absolute inset-0 flex items-center justify-center text-[8px] text-zinc-655 font-bold">
+                          <div className="absolute inset-0 flex items-center justify-center text-[8px] text-zinc-600 font-bold">
                             No Pic
                           </div>
                         )}
