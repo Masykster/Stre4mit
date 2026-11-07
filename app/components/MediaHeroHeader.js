@@ -14,6 +14,7 @@ export default function MediaHeroHeader({
   title,
   logoUrl,
   trailerKey,
+  isModal = false,
 }) {
   const { history } = useApp();
   const [playTrailer, setPlayTrailer] = useState(false);
@@ -63,8 +64,18 @@ export default function MediaHeroHeader({
   const maturity = getMaturityBadge(data);
   const itemForWatchlist = { ...data, media_type: mediaType };
 
+  const bottomFadeColor = isModal
+    ? 'from-[#181818] via-[#181818]/75 to-transparent'
+    : 'from-[#141414] via-[#141414]/70 to-transparent';
+
   return (
-    <div className="relative w-full h-[60vh] min-h-[420px] max-h-[760px] sm:h-[68vh] md:h-[76vh] bg-[#141414] overflow-hidden select-none">
+    <div
+      className={`relative w-full bg-[#141414] overflow-hidden select-none ${
+        isModal
+          ? 'aspect-video min-h-[250px] sm:min-h-[360px] max-h-[520px]'
+          : 'h-[60vh] min-h-[420px] max-h-[760px] sm:h-[68vh] md:h-[76vh]'
+      }`}
+    >
       {/* Crisp Unblurred Backdrop & Optional Auto-playing Trailer */}
       <div className="absolute inset-0 w-full h-full">
         {data.backdrop_path ? (
@@ -73,7 +84,7 @@ export default function MediaHeroHeader({
             alt={title}
             fill
             priority
-            sizes="100vw"
+            sizes={isModal ? '(max-width: 960px) 100vw, 920px' : '100vw'}
             className={`object-cover object-top transition-opacity duration-700 ${
               playTrailer && trailerKey ? 'opacity-0' : 'opacity-100'
             }`}
@@ -84,7 +95,7 @@ export default function MediaHeroHeader({
             alt={title}
             fill
             priority
-            sizes="100vw"
+            sizes={isModal ? '(max-width: 960px) 100vw, 920px' : '100vw'}
             className="object-cover opacity-50"
           />
         ) : null}
@@ -103,23 +114,31 @@ export default function MediaHeroHeader({
 
         {/* Netflix Vignettes */}
         <div className="absolute inset-0 bg-gradient-to-r from-[#141414]/85 via-[#141414]/25 to-transparent pointer-events-none" />
-        <div className="absolute inset-x-0 bottom-0 h-48 md:h-64 bg-gradient-to-t from-[#141414] via-[#141414]/70 to-transparent pointer-events-none" />
-        <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/75 via-black/25 to-transparent pointer-events-none" />
+        <div className={`absolute inset-x-0 bottom-0 h-40 md:h-56 bg-gradient-to-t ${bottomFadeColor} pointer-events-none`} />
+        <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/75 via-black/25 to-transparent pointer-events-none" />
       </div>
 
-      {/* Subtle Back Link below Navbar */}
-      <div className="absolute top-20 left-4 md:left-12 z-20">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/50 hover:bg-black/80 border border-white/15 text-xs font-semibold text-zinc-200 hover:text-white backdrop-blur-sm transition-colors"
-        >
-          <ArrowLeft size={15} />
-          <span>Kembali</span>
-        </Link>
-      </div>
+      {/* Subtle Back Link below Navbar (Full Page only) */}
+      {!isModal && (
+        <div className="absolute top-20 left-4 md:left-12 z-20">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/50 hover:bg-black/80 border border-white/15 text-xs font-semibold text-zinc-200 hover:text-white backdrop-blur-sm transition-colors"
+          >
+            <ArrowLeft size={15} />
+            <span>Kembali</span>
+          </Link>
+        </div>
+      )}
 
       {/* Bottom Title Logo & Primary Actions */}
-      <div className="absolute inset-x-0 bottom-0 z-10 max-w-6xl mx-auto px-4 md:px-12 pb-8 md:pb-12 flex items-end justify-between gap-4">
+      <div
+        className={`absolute inset-x-0 bottom-0 z-10 flex items-end justify-between gap-4 ${
+          isModal
+            ? 'px-5 sm:px-10 pb-6 sm:pb-8'
+            : 'max-w-6xl mx-auto px-4 md:px-12 pb-8 md:pb-12'
+        }`}
+      >
         <div className="space-y-5 max-w-2xl">
           {logoUrl ? (
             <div className="relative h-16 sm:h-24 md:h-28 w-full max-w-[240px] sm:max-w-[340px] md:max-w-[420px]">
@@ -141,6 +160,7 @@ export default function MediaHeroHeader({
           <div className="flex flex-wrap items-center gap-3">
             <Link
               href={watchHref}
+              replace={isModal}
               className="flex h-10 sm:h-11 items-center justify-center gap-2.5 rounded-[4px] bg-white hover:bg-white/85 active:scale-95 px-6 sm:px-8 text-xs sm:text-sm md:text-base font-bold text-black transition-all shadow-lg"
             >
               <Play size={19} className="fill-black text-black" />

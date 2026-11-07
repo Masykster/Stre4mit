@@ -2,6 +2,12 @@ import { Suspense } from 'react';
 import HeroBanner from './HeroBanner';
 import MovieRow from './MovieRow';
 import Top10Row from './Top10Row';
+import {
+  normalizeMediaItem,
+  normalizeTMDbPayload,
+  resolveReadableOverview,
+  resolveReadableTitle,
+} from '@/app/lib/romanize';
 
 async function fetchTMDb(endpoint, queryParams = {}) {
   const apiKey = process.env.TMDB_API_KEY;
@@ -9,7 +15,7 @@ async function fetchTMDb(endpoint, queryParams = {}) {
 
   const query = new URLSearchParams({
     include_adult: 'false',
-    language: 'id-ID',
+    language: 'en-US',
     ...queryParams,
   });
   query.set('api_key', apiKey);
@@ -19,7 +25,8 @@ async function fetchTMDb(endpoint, queryParams = {}) {
       next: { revalidate: 3600 },
     });
     if (!res.ok) return null;
-    return await res.json();
+    const json = await res.json();
+    return normalizeTMDbPayload(json);
   } catch (err) {
     console.error(`DiscoverBrowseView error (${endpoint}):`, err);
     return null;
@@ -233,22 +240,33 @@ async function CategoryHero({ endpoint, params, mediaType, badgeLabel }) {
 
   const items = await Promise.all(
     rawItems.map(async (item) => {
-      const details = await fetchTMDb(`${item.media_type}/${item.id}`, {
-        append_to_response: 'images',
-        language: 'en-US',
-        include_image_language: 'id,en,null',
-      });
-      if (!details) return item;
-      const logos = details.images?.logos || [];
+      const [enDetails, idDetails] = await Promise.all([
+        fetchTMDb(`${item.media_type}/${item.id}`, {
+          append_to_response: 'images',
+          language: 'en-US',
+          include_image_language: 'id,en,null',
+        }),
+        fetchTMDb(`${item.media_type}/${item.id}`, {
+          language: 'id-ID',
+        }),
+      ]);
+      if (!enDetails) return normalizeMediaItem(item);
+      const logos = enDetails.images?.logos || [];
       const logo =
         logos.find((l) => l.iso_639_1 === 'id') ||
         logos.find((l) => l.iso_639_1 === 'en') ||
         logos[0];
-      return {
+      const cleanTitle = resolveReadableTitle(
+        item.title || item.name,
+        enDetails.title || enDetails.name
+      );
+      return normalizeMediaItem({
         ...item,
-        overview: item.overview || details.overview || '',
+        title: item.title ? cleanTitle : item.title,
+        name: item.name ? cleanTitle : item.name,
+        overview: resolveReadableOverview(idDetails?.overview, item.overview || enDetails.overview),
         logoUrl: logo ? `https://image.tmdb.org/t/p/w500${logo.file_path}` : null,
-      };
+      });
     })
   );
 
@@ -279,13 +297,11 @@ export default function DiscoverBrowseView({ searchParams, headerSlot }) {
   const config = getCategoryConfig(searchParams);
 
   return (
-    <div className="relative pb-20 bg-[#141414] overflow-x-clip">
-      {/* Overlaid Category Sub-Header (Netflix TV Shows / Movies placement) */}
-      <div className="relative">
-        <div className="absolute top-16 md:top-20 left-0 right-0 z-30 px-4 md:px-12 py-2">
-          {headerSlot}
-        </div>
+    <div className="relative pb-20 bg-[#141414]">
+      {/* Sticky Netflix Category Sub-Header — floats transparently over Hero, then docks under #141414 Navbar on scroll */}
+      {headerSlot}
 
+      <div className="-mt-14">
         <Suspense
           fallback={
             <div className="w-full h-[78vh] min-h-[540px] max-h-[880px] md:h-[88vh] bg-[#181818] animate-pulse" />

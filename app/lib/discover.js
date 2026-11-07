@@ -61,7 +61,7 @@ export function buildDiscoverRequest(searchParams, page) {
   const query = new URLSearchParams({
     sort_by: tmdbSortBy,
     include_adult: 'false',
-    language: 'id-ID',
+    language: 'en-US',
   });
   if (page !== undefined && page !== null && page !== '') {
     query.set('page', String(page));

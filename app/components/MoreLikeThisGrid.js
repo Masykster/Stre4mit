@@ -6,7 +6,7 @@ import { Play } from 'lucide-react';
 import WatchlistButton from './WatchlistButton';
 import { getMatchScore, getMaturityBadge } from '../lib/genres';
 
-export default function MoreLikeThisGrid({ items, mediaType = 'movie' }) {
+export default function MoreLikeThisGrid({ items, mediaType = 'movie', isModal = false }) {
   if (!items || items.length === 0) return null;
 
   return (
@@ -35,7 +35,7 @@ export default function MoreLikeThisGrid({ items, mediaType = 'movie' }) {
               className="group flex flex-col bg-[#2f2f2f]/65 hover:bg-[#353535]/80 rounded-[4px] overflow-hidden transition-colors"
             >
               {/* Top 16:9 Backdrop */}
-              <Link href={detailHref} className="relative w-full aspect-video bg-[#181818] overflow-hidden block">
+              <Link href={detailHref} replace={isModal} className="relative w-full aspect-video bg-[#181818] overflow-hidden block">
                 {thumb ? (
                   <Image
                     src={thumb}

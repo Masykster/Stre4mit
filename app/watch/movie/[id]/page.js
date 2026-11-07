@@ -1,14 +1,29 @@
 import { notFound } from 'next/navigation';
 import VideoPlayer from '../../../components/VideoPlayer';
+import { normalizeTMDbPayload, resolveReadableTitle } from '@/app/lib/romanize';
 
 async function getMovieData(id) {
   const apiKey = process.env.TMDB_API_KEY;
   if (!apiKey || apiKey === 'your_tmdb_api_key_here') return null;
-  const url = `https://api.themoviedb.org/3/movie/${id}?api_key=${apiKey}&language=id-ID`;
+
   try {
-    const res = await fetch(url, { next: { revalidate: 3600 } });
-    if (!res.ok) return null;
-    return await res.json();
+    const [enRes, idRes] = await Promise.all([
+      fetch(`https://api.themoviedb.org/3/movie/${id}?api_key=${apiKey}&language=en-US`, {
+        next: { revalidate: 3600 },
+      }),
+      fetch(`https://api.themoviedb.org/3/movie/${id}?api_key=${apiKey}&language=id-ID`, {
+        next: { revalidate: 3600 },
+      }),
+    ]);
+
+    if (!enRes.ok) return null;
+    const enData = await enRes.json();
+    const idData = idRes.ok ? await idRes.json() : null;
+
+    return normalizeTMDbPayload({
+      ...enData,
+      title: resolveReadableTitle(idData?.title, enData.title, enData.original_title),
+    });
   } catch (err) {
     console.error(err);
     return null;

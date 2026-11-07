@@ -4,6 +4,7 @@ import DiscoverHeaderBar from '../components/DiscoverHeaderBar';
 import Link from 'next/link';
 import { Film } from 'lucide-react';
 import { buildDiscoverRequest, mapDiscoverResults } from '../lib/discover';
+import { normalizeTMDbPayload } from '@/app/lib/romanize';
 
 async function getDiscoverData(searchParams) {
   const apiKey = process.env.TMDB_API_KEY;
@@ -22,7 +23,7 @@ async function getDiscoverData(searchParams) {
   try {
     const res = await fetch(url, { next: { revalidate: 3600 } });
     if (!res.ok) return [];
-    const data = await res.json();
+    const data = normalizeTMDbPayload(await res.json());
 
     return mapDiscoverResults(data.results, mediaType);
   } catch (err) {
@@ -95,7 +96,7 @@ export default async function DiscoverPage({ searchParams }) {
     />
   );
 
-  // Mode 1: Netflix Category Browse (Hero Billboard + Top 10 + Curated Genre Rows)
+  // Mode 1: Netflix Category Browse (Sticky Sub-Header + Hero Billboard + Top 10 + Curated Rows)
   if (isBrowseMode) {
     return (
       <DiscoverBrowseView
@@ -105,14 +106,14 @@ export default async function DiscoverPage({ searchParams }) {
     );
   }
 
-  // Mode 2: Filter & Infinite Scroll Grid
+  // Mode 2: Filter & Infinite Scroll Grid with Sticky Sub-Header
   const items = await getDiscoverData(resolvedSearchParams);
 
   return (
-    <div className="relative min-h-screen pb-20 bg-[#141414] text-zinc-100 pt-24 px-4 md:px-12">
-      <div className="space-y-6">
-        {headerBar}
+    <div className="relative min-h-screen pb-20 bg-[#141414] text-zinc-100 pt-16 md:pt-[68px]">
+      {headerBar}
 
+      <div className="px-4 md:px-12 pt-4">
         {items.length > 0 ? (
           <DiscoverList
             key={JSON.stringify(resolvedSearchParams)}

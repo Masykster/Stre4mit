@@ -4,6 +4,12 @@ import MovieRow from './components/MovieRow';
 import Top10Row from './components/Top10Row';
 import ContinueWatchingRow from './components/ContinueWatchingRow';
 import { AlertCircle } from 'lucide-react';
+import {
+  normalizeMediaItem,
+  normalizeTMDbPayload,
+  resolveReadableOverview,
+  resolveReadableTitle,
+} from '@/app/lib/romanize';
 
 async function fetchFromTMDb(endpoint, queryParams = {}) {
   const apiKey = process.env.TMDB_API_KEY;
@@ -14,14 +20,15 @@ async function fetchFromTMDb(endpoint, queryParams = {}) {
   const query = new URLSearchParams(queryParams);
   query.set('api_key', apiKey);
   if (!query.has('language')) {
-    query.set('language', 'id-ID');
+    query.set('language', 'en-US');
   }
   const url = `https://api.themoviedb.org/3/${endpoint}?${query.toString()}`;
 
   try {
     const res = await fetch(url, { next: { revalidate: 3600 } });
     if (!res.ok) return null;
-    return await res.json();
+    const json = await res.json();
+    return normalizeTMDbPayload(json);
   } catch (err) {
     console.error(`Error fetching ${endpoint}:`, err);
     return null;
@@ -63,8 +70,7 @@ function MovieRowSkeleton() {
 
 // Lazy components using React Suspense for server-side HTML streaming
 async function LazyHeroBanner() {
-  // Fetch trending in English fallback as well if Indonesian overview is empty
-  const data = await fetchFromTMDb('trending/all/day', { include_adult: 'false', language: 'id-ID' });
+  const data = await fetchFromTMDb('trending/all/day', { include_adult: 'false', language: 'en-US' });
   const rawItems =
     data?.results
       ?.filter((item) => item.backdrop_path && (item.title || item.name) && !item.adult)
@@ -75,28 +81,39 @@ async function LazyHeroBanner() {
   const items = await Promise.all(
     rawItems.map(async (item) => {
       try {
-        const details = await fetchFromTMDb(`${item.media_type}/${item.id}`, {
-          append_to_response: 'images',
-          language: 'en-US',
-          include_image_language: 'id,en,null',
-        });
-        if (!details) return item;
+        const [enDetails, idDetails] = await Promise.all([
+          fetchFromTMDb(`${item.media_type}/${item.id}`, {
+            append_to_response: 'images',
+            language: 'en-US',
+            include_image_language: 'id,en,null',
+          }),
+          fetchFromTMDb(`${item.media_type}/${item.id}`, {
+            language: 'id-ID',
+          }),
+        ]);
 
-        const logos = details.images?.logos || [];
+        const logos = enDetails?.images?.logos || [];
         const logo =
           logos.find((l) => l.iso_639_1 === 'id') ||
           logos.find((l) => l.iso_639_1 === 'en') ||
           logos[0];
         const logoUrl = logo ? `https://image.tmdb.org/t/p/w500${logo.file_path}` : null;
 
-        return {
+        const cleanTitle = resolveReadableTitle(
+          item.title || item.name,
+          enDetails?.title || enDetails?.name
+        );
+
+        return normalizeMediaItem({
           ...item,
-          overview: item.overview || details.overview || '',
+          title: item.title ? cleanTitle : item.title,
+          name: item.name ? cleanTitle : item.name,
+          overview: resolveReadableOverview(idDetails?.overview, item.overview || enDetails?.overview),
           logoUrl,
-        };
+        });
       } catch (err) {
         console.error(`Failed to fetch details for trending ${item.media_type}:`, err);
-        return item;
+        return normalizeMediaItem(item);
       }
     })
   );
@@ -105,7 +122,7 @@ async function LazyHeroBanner() {
 }
 
 async function LazyTop10Row() {
-  const data = await fetchFromTMDb('trending/all/day', { include_adult: 'false' });
+  const data = await fetchFromTMDb('trending/all/day', { include_adult: 'false', language: 'en-US' });
   const filtered = (data?.results || []).filter(
     (item) => (item.media_type === 'movie' || item.media_type === 'tv') && item.poster_path && !item.adult
   );
@@ -114,7 +131,7 @@ async function LazyTop10Row() {
 }
 
 async function LazyMovieRow({ title, endpoint, queryParams = {}, mediaTypeOverride, exploreHref }) {
-  const data = await fetchFromTMDb(endpoint, { include_adult: 'false', ...queryParams });
+  const data = await fetchFromTMDb(endpoint, { include_adult: 'false', language: 'en-US', ...queryParams });
   if (!data || !data.results || data.results.length === 0) return null;
 
   const filtered = data.results

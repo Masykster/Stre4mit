@@ -1,13 +1,24 @@
 import { notFound } from 'next/navigation';
 import VideoPlayer from '../../../../../components/VideoPlayer';
+import {
+  normalizeTMDbPayload,
+  resolveReadableOverview,
+  resolveReadableTitle,
+} from '@/app/lib/romanize';
 
 async function getTVWatchData(id, seasonNum) {
   const apiKey = process.env.TMDB_API_KEY;
   if (!apiKey || apiKey === 'your_tmdb_api_key_here') return null;
 
   try {
-    const [tvRes, seasonRes] = await Promise.all([
+    const [tvEnRes, tvIdRes, seasonEnRes, seasonIdRes] = await Promise.all([
+      fetch(`https://api.themoviedb.org/3/tv/${id}?api_key=${apiKey}&language=en-US`, {
+        next: { revalidate: 3600 },
+      }),
       fetch(`https://api.themoviedb.org/3/tv/${id}?api_key=${apiKey}&language=id-ID`, {
+        next: { revalidate: 3600 },
+      }),
+      fetch(`https://api.themoviedb.org/3/tv/${id}/season/${seasonNum}?api_key=${apiKey}&language=en-US`, {
         next: { revalidate: 3600 },
       }),
       fetch(`https://api.themoviedb.org/3/tv/${id}/season/${seasonNum}?api_key=${apiKey}&language=id-ID`, {
@@ -15,14 +26,44 @@ async function getTVWatchData(id, seasonNum) {
       }),
     ]);
 
-    if (!tvRes.ok || !seasonRes.ok) return null;
+    if (!tvEnRes.ok || !seasonEnRes.ok) return null;
 
-    const tvData = await tvRes.json();
-    const seasonData = await seasonRes.json();
+    const tvEn = await tvEnRes.json();
+    const tvId = tvIdRes.ok ? await tvIdRes.json() : null;
+    const seasonEn = await seasonEnRes.json();
+    const seasonId = seasonIdRes.ok ? await seasonIdRes.json() : null;
+
+    const idEpMap = new Map(
+      (seasonId?.episodes || []).map((ep) => [ep.episode_number, ep])
+    );
+
+    const mergedEpisodes = (seasonEn.episodes || []).map((enEp) => {
+      const idEp = idEpMap.get(enEp.episode_number);
+      return {
+        ...enEp,
+        name: resolveReadableTitle(idEp?.name, enEp.name),
+        overview: resolveReadableOverview(idEp?.overview, enEp.overview),
+      };
+    });
+
+    const mergedSeasons = (tvEn.seasons || []).map((enS) => {
+      const idS = tvId?.seasons?.find((s) => s.season_number === enS.season_number);
+      return {
+        ...enS,
+        name: resolveReadableTitle(idS?.name, enS.name),
+      };
+    });
 
     return {
-      tv: tvData,
-      season: seasonData,
+      tv: normalizeTMDbPayload({
+        ...tvEn,
+        name: resolveReadableTitle(tvId?.name, tvEn.name, tvEn.original_name),
+        seasons: mergedSeasons,
+      }),
+      season: normalizeTMDbPayload({
+        ...seasonEn,
+        episodes: mergedEpisodes,
+      }),
     };
   } catch (err) {
     console.error(err);

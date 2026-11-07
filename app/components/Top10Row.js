@@ -9,6 +9,7 @@ export default function Top10Row({ title = 'Top 10 di Indonesia Hari Ini', items
   const scrollRef = useDragScroll();
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
+  const [pageInfo, setPageInfo] = useState({ total: 1, active: 0 });
 
   const topItems = (items || []).filter((item) => item.poster_path).slice(0, 10);
 
@@ -17,6 +18,13 @@ export default function Top10Row({ title = 'Top 10 di Indonesia Hari Ini', items
     if (!el) return;
     setCanScrollLeft(el.scrollLeft > 12);
     setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 12);
+
+    const viewWidth = Math.max(1, el.clientWidth);
+    const totalPages = Math.max(1, Math.min(6, Math.ceil(el.scrollWidth / viewWidth)));
+    const maxScroll = Math.max(1, el.scrollWidth - viewWidth);
+    const ratio = Math.min(1, Math.max(0, el.scrollLeft / maxScroll));
+    const activePage = Math.min(totalPages - 1, Math.round(ratio * (totalPages - 1)));
+    setPageInfo({ total: totalPages, active: activePage });
   }, [scrollRef]);
 
   useEffect(() => {
@@ -45,10 +53,26 @@ export default function Top10Row({ title = 'Top 10 di Indonesia Hari Ini', items
 
   return (
     <section className="group/row relative space-y-2.5">
-      <div className="px-4 md:px-12">
-        <h2 className="text-base sm:text-lg md:text-[20px] font-bold text-[#e5e5e5] tracking-tight select-none">
+      <div className="flex items-center justify-between gap-4 px-4 md:px-12">
+        <h2 className="text-base sm:text-lg md:text-[20px] font-bold text-[#e5e5e5] tracking-tight select-none truncate">
           {title}
         </h2>
+
+        {pageInfo.total > 1 && (
+          <div
+            aria-hidden="true"
+            className="hidden sm:flex items-center gap-[3px] opacity-0 group-hover/row:opacity-100 transition-opacity duration-200 flex-shrink-0"
+          >
+            {Array.from({ length: pageInfo.total }).map((_, idx) => (
+              <span
+                key={idx}
+                className={`h-[2px] w-3 transition-colors duration-200 ${
+                  idx === pageInfo.active ? 'bg-zinc-200' : 'bg-zinc-600'
+                }`}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="relative">
@@ -104,7 +128,7 @@ export default function Top10Row({ title = 'Top 10 di Indonesia Hari Ini', items
 
                 {/* Crisp 2:3 Poster paired with Netflix Hover Pop-out */}
                 <div className="relative z-10 w-[56%] flex-shrink-0 shadow-xl shadow-black/70">
-                  <MovieCard item={item} variant="poster" hideTitle />
+                  <MovieCard item={item} variant="poster" hideTitle isTop10 />
                 </div>
               </div>
             );

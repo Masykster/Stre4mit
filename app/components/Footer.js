@@ -5,12 +5,13 @@ import { usePathname } from 'next/navigation';
 
 const FOOTER_LINKS = [
   { label: 'Beranda', href: '/' },
+  { label: 'Baru & Populer', href: '/latest' },
   { label: 'Acara TV', href: '/discover?type=tv' },
   { label: 'Film', href: '/discover?type=movie' },
   { label: 'Anime', href: '/discover?anime=true' },
   { label: 'Drama', href: '/discover?drama=true' },
   { label: 'Daftar Saya', href: '/watchlist' },
-  { label: 'Pencarian', href: '/search' },
+  { label: 'Telusuri menurut Bahasa', href: '/languages' },
 ];
 
 export default function Footer() {

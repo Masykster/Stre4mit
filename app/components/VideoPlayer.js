@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useApp } from '../context/AppContext';
 import {
   Maximize2,
@@ -34,7 +35,8 @@ export default function VideoPlayer({
   nextEpisodeHref,
   prevEpisodeHref,
 }) {
-  const { addToHistory, isLoaded } = useApp();
+  const router = useRouter();
+  const { addToHistory, isLoaded, exitWatchPlayer } = useApp();
   const {
     source,
     embedUrl,
@@ -206,12 +208,22 @@ export default function VideoPlayer({
 
   const showTopChrome = controlsVisible || serverMenuOpen || episodeMenuOpen || exhausted;
   const currentServerObj = VIDEO_SOURCES.find((s) => s.value === source) || VIDEO_SOURCES[0];
-  const backHref = type === 'tv' ? `/tv/${id}` : `/movie/${id}`;
   const validSeasons = seasons.filter((s) => s.season_number > 0);
   const displayedEpisodes =
     Number(drawerSeason) === Number(season) && initialEpisodes.length > 0 && drawerEpisodes === initialEpisodes
       ? initialEpisodes
       : drawerEpisodes;
+
+  const handleExitPlayer = useCallback(async () => {
+    try {
+      if (document.fullscreenElement && document.exitFullscreen) {
+        await document.exitFullscreen().catch(() => {});
+      }
+    } catch {
+      // Ignore fullscreen exit errors
+    }
+    exitWatchPlayer(router);
+  }, [exitWatchPlayer, router]);
 
   return (
     <div
@@ -239,14 +251,15 @@ export default function VideoPlayer({
       >
         {/* Left: Back Button & Title Metadata */}
         <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-          <Link
-            href={backHref}
-            aria-label="Kembali ke halaman detail"
+          <button
+            type="button"
+            onClick={handleExitPlayer}
+            aria-label="Keluar dari pemutar"
             title="Kembali"
-            className="flex h-10 w-10 items-center justify-center rounded-full text-zinc-200 hover:text-white hover:bg-white/15 transition-all active:scale-90 flex-shrink-0"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-zinc-200 hover:text-white hover:bg-white/15 transition-all active:scale-90 flex-shrink-0 cursor-pointer"
           >
             <ArrowLeft size={24} />
-          </Link>
+          </button>
 
           <div className="min-w-0">
             <h1 className="text-sm sm:text-lg md:text-xl font-bold text-white truncate drop-shadow">
@@ -267,6 +280,7 @@ export default function VideoPlayer({
           {type === 'tv' && prevEpisodeHref && (
             <Link
               href={prevEpisodeHref}
+              replace
               title="Episode Sebelumnya"
               className="hidden sm:flex h-9 items-center gap-1 px-3 rounded-[4px] bg-black/65 hover:bg-white/20 border border-white/25 text-xs font-bold text-white backdrop-blur-md transition-colors"
             >
@@ -278,6 +292,7 @@ export default function VideoPlayer({
           {type === 'tv' && nextEpisodeHref && (
             <Link
               href={nextEpisodeHref}
+              replace
               title="Episode Selanjutnya"
               className="flex h-9 items-center gap-1.5 px-3 sm:px-3.5 rounded-[4px] bg-white hover:bg-white/85 text-xs font-bold text-black transition-colors shadow"
             >
@@ -348,6 +363,7 @@ export default function VideoPlayer({
                           <Link
                             key={ep.id}
                             href={`/watch/tv/${id}/${drawerSeason}/${ep.episode_number}`}
+                            replace
                             onClick={() => setEpisodeMenuOpen(false)}
                             className={`flex items-center gap-3 p-2.5 rounded-[4px] transition-colors ${
                               isCurrent ? 'bg-white/15' : 'hover:bg-white/5'
@@ -499,12 +515,13 @@ export default function VideoPlayer({
               <RefreshCw size={15} />
               Coba Lagi
             </button>
-            <Link
-              href={backHref}
-              className="flex items-center gap-2 bg-[#2a2a2a] hover:bg-[#383838] text-white text-xs sm:text-sm font-bold px-5 h-10 rounded-[4px] transition-all"
+            <button
+              type="button"
+              onClick={handleExitPlayer}
+              className="flex items-center gap-2 bg-[#2a2a2a] hover:bg-[#383838] text-white text-xs sm:text-sm font-bold px-5 h-10 rounded-[4px] transition-all cursor-pointer"
             >
-              Kembali ke Detail
-            </Link>
+              Kembali ke Beranda
+            </button>
           </div>
         </div>
       )}

@@ -3,34 +3,24 @@
 import { Suspense, useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Search, X, Menu, ChevronDown } from 'lucide-react';
-import { YEARS } from '../lib/discover';
+import { Search, X, ChevronDown, Bell } from 'lucide-react';
 import { DISCOVER_GENRES, getMatchScore } from '../lib/genres';
-
-// Glass surface for the scrolled pill. Kept as inline styles so the effect does
-// not depend on a custom class surviving the stylesheet pipeline.
-const glassStyle = {
-  backgroundColor: 'rgba(16, 16, 18, 0.55)',
-  backgroundImage:
-    'linear-gradient(135deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.04) 38%, rgba(255, 255, 255, 0.09) 100%)',
-  WebkitBackdropFilter: 'blur(20px) saturate(170%)',
-  backdropFilter: 'blur(20px) saturate(170%)',
-  border: '1px solid rgba(255, 255, 255, 0.14)',
-  boxShadow:
-    '0 18px 40px -18px rgba(0, 0, 0, 0.85), 0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -1px 0 rgba(255, 255, 255, 0.05)',
-};
 
 const NAV_ITEMS = [
   { key: 'home', label: 'Beranda', href: '/' },
   { key: 'tv', label: 'Acara TV', href: '/discover?type=tv' },
   { key: 'movie', label: 'Film', href: '/discover?type=movie' },
+  { key: 'latest', label: 'Baru & Populer', href: '/latest' },
   { key: 'anime', label: 'Anime', href: '/discover?anime=true' },
   { key: 'drama', label: 'Drama', href: '/discover?drama=true' },
   { key: 'watchlist', label: 'Daftar Saya', href: '/watchlist' },
+  { key: 'languages', label: 'Telusuri Bahasa', href: '/languages' },
 ];
 
 function resolveActiveKey(pathname, searchParams) {
   if (pathname === '/') return 'home';
+  if (pathname === '/latest') return 'latest';
+  if (pathname === '/languages') return 'languages';
   if (pathname === '/watchlist') return 'watchlist';
   if (pathname === '/discover' && searchParams) {
     if (searchParams.get('anime') === 'true') return 'anime';
@@ -46,7 +36,7 @@ function DesktopNavLinksInner({ pathname }) {
   const activeKey = resolveActiveKey(pathname, searchParams);
 
   return (
-    <nav className="hidden lg:flex items-center gap-5 text-[13px] tracking-wide">
+    <nav className="hidden lg:flex items-center gap-3.5 xl:gap-5 text-[13px] xl:text-[14px]">
       {NAV_ITEMS.map((item) => {
         const isActive = activeKey === item.key;
         return (
@@ -55,8 +45,8 @@ function DesktopNavLinksInner({ pathname }) {
             href={item.href}
             className={`transition-colors duration-200 whitespace-nowrap ${
               isActive
-                ? 'text-white font-bold'
-                : 'text-zinc-300/85 font-medium hover:text-zinc-100'
+                ? 'text-white font-bold cursor-default'
+                : 'text-[#e5e5e5] font-normal hover:text-[#b3b3b3]'
             }`}
           >
             {item.label}
@@ -70,7 +60,7 @@ function DesktopNavLinksInner({ pathname }) {
 function DesktopNavLinksFallback({ pathname }) {
   const activeKey = resolveActiveKey(pathname, null);
   return (
-    <nav className="hidden lg:flex items-center gap-5 text-[13px] tracking-wide">
+    <nav className="hidden lg:flex items-center gap-3.5 xl:gap-5 text-[13px] xl:text-[14px]">
       {NAV_ITEMS.map((item) => {
         const isActive = activeKey === item.key;
         return (
@@ -79,8 +69,8 @@ function DesktopNavLinksFallback({ pathname }) {
             href={item.href}
             className={`transition-colors duration-200 whitespace-nowrap ${
               isActive
-                ? 'text-white font-bold'
-                : 'text-zinc-300/85 font-medium hover:text-zinc-100'
+                ? 'text-white font-bold cursor-default'
+                : 'text-[#e5e5e5] font-normal hover:text-[#b3b3b3]'
             }`}
           >
             {item.label}
@@ -128,7 +118,7 @@ function SearchResultsList({ loading, results, query, onSelect }) {
               onClick={onSelect}
               className="flex items-center gap-3 p-2.5 hover:bg-[#2a2a2a] transition-colors duration-150 group"
             >
-              <div className="relative w-20 aspect-video bg-[#141414] rounded-[3px] overflow-hidden flex-shrink-0">
+              <div className="relative w-20 aspect-video bg-[#141414] rounded-[2px] overflow-hidden flex-shrink-0">
                 {thumbPath && (
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img
@@ -178,10 +168,20 @@ export default function NavigationBar() {
   const [loading, setLoading] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isBrowseOpen, setIsBrowseOpen] = useState(false);
+
+  // Notification Bell ("Baru & Sedang Hangat") state
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [hasUnreadNotif, setHasUnreadNotif] = useState(true);
+  const [notifItems, setNotifItems] = useState([]);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const notifFetchedRef = useRef(false);
+
   const pathname = usePathname();
   const router = useRouter();
   const searchRef = useRef(null);
+  const browseRef = useRef(null);
+  const notifRef = useRef(null);
   const desktopInputRef = useRef(null);
   const mobileSearchRef = useRef(null);
 
@@ -197,8 +197,7 @@ export default function NavigationBar() {
     }
   };
 
-  // Close dropdown & clear search on path change — adjusted during render
-  // instead of inside an effect to avoid cascading re-renders
+  // Close menus on route change during render
   const [prevPathname, setPrevPathname] = useState(pathname);
   if (prevPathname !== pathname) {
     setPrevPathname(pathname);
@@ -209,10 +208,11 @@ export default function NavigationBar() {
     setResults([]);
     setIsOpen(false);
     setIsMobileSearchOpen(false);
-    setIsMobileMenuOpen(false);
+    setIsBrowseOpen(false);
+    setIsNotifOpen(false);
   }
 
-  // Click outside listener for desktop expandable search
+  // Click outside listener for popovers
   useEffect(() => {
     function handleClickOutside(event) {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
@@ -221,15 +221,20 @@ export default function NavigationBar() {
           setIsSearchExpanded(false);
         }
       }
+      if (browseRef.current && !browseRef.current.contains(event.target)) {
+        setIsBrowseOpen(false);
+      }
+      if (notifRef.current && !notifRef.current.contains(event.target)) {
+        setIsNotifOpen(false);
+      }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Swap the transparent header for the floating glass pill once the page moves.
-  // The first check runs inside rAF so no state is set directly in the effect.
+  // Netflix scroll transition: top gradient -> solid #141414
   useEffect(() => {
-    const updateScrolled = () => setIsScrolled(window.scrollY > 8);
+    const updateScrolled = () => setIsScrolled(window.scrollY > 10);
     const frame = requestAnimationFrame(updateScrolled);
     window.addEventListener('scroll', updateScrolled, { passive: true });
     return () => {
@@ -238,10 +243,9 @@ export default function NavigationBar() {
     };
   }, []);
 
-  // Mobile search modal: focus the field on open, close on Escape, and keep the
-  // page behind the overlay from scrolling.
+  // Mobile search modal scroll lock
   useEffect(() => {
-    if (!isMobileSearchOpen) return;
+    if (!isMobileSearchOpen) return undefined;
 
     mobileSearchRef.current?.focus();
     const previousOverflow = document.body.style.overflow;
@@ -258,26 +262,7 @@ export default function NavigationBar() {
     };
   }, [isMobileSearchOpen]);
 
-  // Mobile navigation drawer: lock page scroll and allow closing with Escape.
-  useEffect(() => {
-    if (!isMobileMenuOpen) return;
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') setIsMobileMenuOpen(false);
-    };
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isMobileMenuOpen]);
-
-  // Clear stale results immediately when the query is emptied — adjusted
-  // during render instead of inside an effect to avoid cascading re-renders
+  // Clear stale results immediately when query is emptied
   const [prevQuery, setPrevQuery] = useState(query);
   if (prevQuery !== query) {
     setPrevQuery(query);
@@ -287,10 +272,9 @@ export default function NavigationBar() {
     }
   }
 
-  // Debounced search with abort support so stale responses can never
-  // overwrite results for a newer query
+  // Debounced search with abort support
   useEffect(() => {
-    if (!query.trim()) return;
+    if (!query.trim()) return undefined;
 
     let cancelled = false;
     const controller = new AbortController();
@@ -304,19 +288,25 @@ export default function NavigationBar() {
       setLoading(true);
       setIsOpen(true);
       try {
-        const res = await fetch(`/api/tmdb/search/multi?query=${encodeURIComponent(query)}&include_adult=false`, {
-          signal: controller.signal,
-        });
+        const res = await fetch(
+          `/api/tmdb/search/multi?query=${encodeURIComponent(query)}&include_adult=false`,
+          { signal: controller.signal }
+        );
         const data = await res.json();
         if (!cancelled && data.results) {
           const filtered = data.results
-            .filter((item) => (item.media_type === 'movie' || item.media_type === 'tv') && (item.poster_path || item.backdrop_path) && !item.adult)
+            .filter(
+              (item) =>
+                (item.media_type === 'movie' || item.media_type === 'tv') &&
+                (item.poster_path || item.backdrop_path) &&
+                !item.adult
+            )
             .slice(0, 6);
           setResults(filtered);
         }
       } catch (err) {
         if (err.name !== 'AbortError') {
-          console.error("Search failed:", err);
+          console.error('Search failed:', err);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -337,26 +327,55 @@ export default function NavigationBar() {
 
   const openDesktopSearch = () => {
     setIsSearchExpanded(true);
+    setIsNotifOpen(false);
     requestAnimationFrame(() => {
       desktopInputRef.current?.focus();
     });
   };
 
+  const toggleNotifications = async () => {
+    const nextOpen = !isNotifOpen;
+    setIsNotifOpen(nextOpen);
+    setHasUnreadNotif(false);
+
+    if (nextOpen && !notifFetchedRef.current) {
+      notifFetchedRef.current = true;
+      setNotifLoading(true);
+      try {
+        const res = await fetch('/api/tmdb/trending/all/day?language=en-US');
+        const data = await res.json();
+        const items = (data?.results || [])
+          .filter(
+            (item) =>
+              (item.media_type === 'movie' || item.media_type === 'tv') &&
+              (item.backdrop_path || item.poster_path) &&
+              !item.adult
+          )
+          .slice(0, 6);
+        setNotifItems(items);
+      } catch (err) {
+        console.error('Failed to fetch notifications:', err);
+        notifFetchedRef.current = false;
+      } finally {
+        setNotifLoading(false);
+      }
+    }
+  };
+
   return (
     <>
       <header
-        style={isScrolled ? glassStyle : undefined}
-        className={`fixed z-50 mx-auto flex items-center justify-between transition-all duration-300 ease-out ${
+        className={`fixed top-0 left-0 right-0 z-50 flex h-16 md:h-[68px] items-center justify-between px-4 md:px-12 transition-colors duration-500 ${
           isScrolled
-            ? 'top-3 left-3 right-3 md:left-6 md:right-6 max-w-6xl h-14 rounded-full px-5 md:px-7'
-            : 'top-0 left-0 right-0 max-w-none h-16 px-4 md:px-8 bg-transparent'
+            ? 'bg-[#141414] shadow-lg shadow-black/50'
+            : 'bg-gradient-to-b from-black/80 via-black/40 to-transparent'
         }`}
       >
-        {/* Left: Brand & Netflix-style Links */}
-        <div className="flex items-center gap-5 md:gap-8">
+        {/* Left: Brand Wordmark & Netflix Navigation */}
+        <div className="flex items-center gap-5 md:gap-9">
           <Link
             href="/"
-            className="text-[#E50914] font-black text-xl md:text-2xl tracking-wider select-none active:scale-95 transition-transform duration-150"
+            className="text-[#E50914] font-black text-xl sm:text-2xl md:text-[26px] tracking-wider select-none active:scale-95 transition-transform duration-150"
           >
             STRE<span className="text-white">4</span>MIT
           </Link>
@@ -365,78 +384,119 @@ export default function NavigationBar() {
             <DesktopNavLinksInner pathname={pathname} />
           </Suspense>
 
-          {/* Tablet compact "Telusuri ▾" dropdown (Netflix medium-viewport pattern) */}
-          <div className="relative group hidden md:block lg:hidden">
+          {/* Mobile & Tablet Netflix "Telusuri ▾" Dropdown (replaces side hamburger drawer) */}
+          <div ref={browseRef} className="relative lg:hidden">
             <button
               type="button"
-              className="flex items-center gap-1 text-xs font-bold text-white py-2 focus:outline-none"
+              onClick={() => setIsBrowseOpen((prev) => !prev)}
+              aria-expanded={isBrowseOpen}
+              className="flex items-center gap-1 text-xs sm:text-[13px] font-bold text-white py-2 cursor-pointer focus:outline-none"
             >
-              Telusuri
-              <ChevronDown size={14} className="transition-transform duration-200 group-hover:rotate-180" />
+              <span>Telusuri</span>
+              <ChevronDown
+                size={14}
+                className={`transition-transform duration-200 ${isBrowseOpen ? 'rotate-180' : ''}`}
+              />
             </button>
-            <div className="absolute left-0 top-full pt-2 hidden group-hover:block z-50">
-              <div className="w-48 bg-[#141414]/95 backdrop-blur-xl border border-white/15 border-t-2 border-t-white rounded-[4px] shadow-2xl py-2 text-center">
-                {NAV_ITEMS.map((item) => (
-                  <Link
-                    key={item.key}
-                    href={item.href}
-                    className="block px-4 py-2.5 text-xs font-semibold text-zinc-300 hover:text-white hover:bg-white/5 transition-colors"
-                  >
-                    {item.label}
-                  </Link>
-                ))}
+
+            {isBrowseOpen && (
+              <div className="absolute left-0 top-full mt-2 w-64 sm:w-72 bg-black/95 backdrop-blur-md border border-white/15 border-t-2 border-t-white rounded-[2px] shadow-2xl z-50 overflow-hidden">
+                {/* Small top caret indicator */}
+                <nav className="flex flex-col py-1.5 text-center border-b border-white/10">
+                  {NAV_ITEMS.map((item) => (
+                    <Link
+                      key={item.key}
+                      href={item.href}
+                      onClick={() => setIsBrowseOpen(false)}
+                      className={`px-4 py-2.5 text-[13px] transition-colors ${
+                        pathname === item.href
+                          ? 'text-white font-bold bg-white/5'
+                          : 'text-[#b3b3b3] font-medium hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </nav>
+
+                <div className="p-3 bg-[#141414]/90">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-2 text-center">
+                    Genre Populer
+                  </p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {DISCOVER_GENRES.slice(0, 6).map((g) => (
+                      <Link
+                        key={g.id}
+                        href={`/discover?genre=${g.id}&genreName=${encodeURIComponent(g.name)}&view=grid`}
+                        onClick={() => setIsBrowseOpen(false)}
+                        className="text-center py-1.5 px-2 rounded-[2px] bg-white/5 hover:bg-white/15 text-[11px] text-zinc-300 hover:text-white transition-colors truncate"
+                      >
+                        {g.name}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
-        {/* Right: Expandable Netflix Search & Mobile Triggers */}
-        <div className="flex items-center gap-2">
-          {/* Expandable Search Bar (tablet & desktop) */}
+        {/* Right: Crisp Rectangular Expandable Search & Notification Bell */}
+        <div className="flex items-center gap-3 sm:gap-4">
+          {/* Desktop & Tablet Rectangular Netflix Search Box */}
           <div ref={searchRef} className="relative hidden sm:flex items-center">
-            {isSearchExpanded || query ? (
-              <div className="flex items-center w-52 md:w-64 h-9 px-3 rounded-full bg-black/75 border border-white/60 transition-all duration-200">
-                <Search size={16} className="shrink-0 text-zinc-200 mr-2" />
-                <input
-                  ref={desktopInputRef}
-                  type="text"
-                  id="search-query"
-                  name="q"
-                  placeholder="Judul, film, serial..."
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={handleSearchSubmit}
-                  onFocus={() => query.trim() && pathname !== '/search' && setIsOpen(true)}
-                  aria-label="Cari konten"
-                  className="w-full bg-transparent text-xs md:text-[13px] text-white placeholder-zinc-400 focus:outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setQuery('');
-                    setIsOpen(false);
-                    setIsSearchExpanded(false);
-                  }}
-                  className="ml-1 text-zinc-400 hover:text-white transition-colors"
-                  aria-label="Tutup pencarian"
-                >
-                  <X size={15} />
-                </button>
-              </div>
-            ) : (
+            <div
+              className={`flex items-center h-9 overflow-hidden transition-all duration-300 ease-out ${
+                isSearchExpanded || query
+                  ? 'w-56 md:w-68 px-2.5 bg-black/85 border border-white/85 rounded-[2px]'
+                  : 'w-9 justify-center bg-transparent border border-transparent'
+              }`}
+            >
               <button
                 type="button"
                 onClick={openDesktopSearch}
                 aria-label="Buka pencarian"
-                className="flex h-9 w-9 items-center justify-center rounded-full text-zinc-100 hover:bg-white/10 transition-colors active:scale-95"
+                className="flex items-center justify-center text-white hover:text-zinc-300 transition-colors cursor-pointer shrink-0"
               >
-                <Search size={18} />
+                <Search size={19} strokeWidth={2.2} />
               </button>
-            )}
 
-            {/* Dropdown Results Overlay */}
+              {(isSearchExpanded || query) && (
+                <>
+                  <input
+                    ref={desktopInputRef}
+                    type="text"
+                    id="search-query"
+                    name="q"
+                    placeholder="Judul, film, genre..."
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    onKeyDown={handleSearchSubmit}
+                    onFocus={() => query.trim() && pathname !== '/search' && setIsOpen(true)}
+                    aria-label="Cari konten"
+                    className="w-full pl-2.5 pr-1 bg-transparent text-xs md:text-[13px] text-white placeholder-zinc-400 focus:outline-none"
+                  />
+                  {query && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuery('');
+                        setIsOpen(false);
+                        desktopInputRef.current?.focus();
+                      }}
+                      className="text-zinc-400 hover:text-white transition-colors cursor-pointer shrink-0"
+                      aria-label="Bersihkan pencarian"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Instant Search Results Dropdown */}
             {isOpen && pathname !== '/search' && (
-              <div className="absolute right-0 top-full mt-2.5 w-[310px] sm:w-[360px] bg-[#181818] border border-white/15 rounded-md overflow-hidden shadow-2xl shadow-black z-50">
+              <div className="absolute right-0 top-full mt-2 w-[310px] sm:w-[360px] bg-black/95 border border-white/15 border-t-2 border-t-white rounded-[2px] overflow-hidden shadow-2xl shadow-black z-50">
                 <SearchResultsList
                   loading={loading}
                   results={results}
@@ -447,118 +507,99 @@ export default function NavigationBar() {
             )}
           </div>
 
-          {/* Mobile search trigger */}
+          {/* Mobile Search Trigger */}
           <button
             type="button"
             onClick={() => {
               setIsMobileSearchOpen(true);
-              setIsMobileMenuOpen(false);
+              setIsBrowseOpen(false);
+              setIsNotifOpen(false);
             }}
             aria-label="Buka pencarian"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-100 hover:bg-white/10 transition-transform active:scale-95 sm:hidden"
+            className="flex h-9 w-9 shrink-0 items-center justify-center text-white hover:text-zinc-300 transition-transform active:scale-95 sm:hidden"
           >
-            <Search size={18} />
+            <Search size={19} strokeWidth={2.2} />
           </button>
 
-          {/* Mobile menu trigger */}
-          <button
-            type="button"
-            onClick={() => setIsMobileMenuOpen(true)}
-            aria-label="Buka menu"
-            aria-expanded={isMobileMenuOpen}
-            aria-controls="mobile-menu"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-100 hover:bg-white/10 transition-transform active:scale-95 md:hidden"
-          >
-            <Menu size={20} />
-          </button>
+          {/* Netflix Notification Bell ("Baru & Sedang Hangat") */}
+          <div ref={notifRef} className="relative">
+            <button
+              type="button"
+              onClick={toggleNotifications}
+              aria-label="Notifikasi tayangan terbaru"
+              title="Baru & Sedang Hangat"
+              className="relative flex h-9 w-9 items-center justify-center text-white hover:text-zinc-300 transition-colors cursor-pointer"
+            >
+              <Bell size={19} strokeWidth={2.1} />
+              {hasUnreadNotif && (
+                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-[#E50914] ring-2 ring-[#141414]" />
+              )}
+            </button>
+
+            {isNotifOpen && (
+              <div className="absolute right-0 top-full mt-2 w-[295px] sm:w-[365px] max-h-[70vh] overflow-y-auto bg-black/95 backdrop-blur-md border border-white/15 border-t-2 border-t-white rounded-[2px] shadow-2xl z-50">
+                <div className="px-4 py-2.5 border-b border-white/10">
+                  <p className="text-xs font-bold text-white">Baru & Sedang Hangat Hari Ini</p>
+                </div>
+
+                {notifLoading ? (
+                  <div className="p-6 text-center text-xs text-zinc-400 flex items-center justify-center gap-2">
+                    <span className="w-4 h-4 border-2 border-[#E50914] border-t-transparent rounded-full animate-spin" />
+                    Memuat rilis terbaru...
+                  </div>
+                ) : notifItems.length > 0 ? (
+                  <div className="divide-y divide-white/10">
+                    {notifItems.map((item) => {
+                      const title = item.title || item.name;
+                      const year = (item.release_date || item.first_air_date || '').split('-')[0];
+                      const thumb = item.backdrop_path || item.poster_path;
+                      const href = item.media_type === 'tv' ? `/tv/${item.id}` : `/movie/${item.id}`;
+
+                      return (
+                        <Link
+                          key={`notif-${item.media_type}-${item.id}`}
+                          href={href}
+                          onClick={() => setIsNotifOpen(false)}
+                          className="flex items-center gap-3.5 p-3 hover:bg-white/10 transition-colors group"
+                        >
+                          <div className="relative w-24 aspect-video bg-[#181818] rounded-[2px] overflow-hidden flex-shrink-0">
+                            {thumb && (
+                              /* eslint-disable-next-line @next/next/no-img-element */
+                              <img
+                                src={`https://image.tmdb.org/t/p/w300${thumb}`}
+                                alt={title}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                              />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-grow space-y-0.5">
+                            <p className="text-[11px] font-bold text-[#E50914] uppercase tracking-wide">
+                              Trending Sekarang
+                            </p>
+                            <p className="text-xs sm:text-[13px] font-semibold text-zinc-100 group-hover:text-white line-clamp-1">
+                              {title}
+                            </p>
+                            <p className="text-[11px] text-zinc-400">
+                              {item.media_type === 'tv' ? 'Acara TV' : 'Film'}
+                              {year ? ` • ${year}` : ''}
+                            </p>
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="p-5 text-center text-xs text-zinc-500">
+                    Belum ada pembaruan tayangan terbaru.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
-      {/* Mobile navigation drawer */}
-      {isMobileMenuOpen && (
-        <div
-          id="mobile-menu"
-          className="fixed inset-0 z-[60] md:hidden"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Menu navigasi"
-        >
-          <button
-            type="button"
-            onClick={() => setIsMobileMenuOpen(false)}
-            aria-label="Tutup menu"
-            className="absolute inset-0 h-full w-full bg-black/75 backdrop-blur-sm"
-          />
-          <div className="absolute right-0 top-0 flex h-full w-[85%] max-w-sm flex-col overflow-y-auto border-l border-white/10 bg-[#141414] px-5 pb-10 pt-4 shadow-2xl">
-            <div className="flex items-center justify-between">
-              <Link
-                href="/"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="select-none text-xl font-black tracking-wider text-[#E50914] transition-transform active:scale-95"
-              >
-                STRE<span className="text-white">4</span>MIT
-              </Link>
-              <button
-                type="button"
-                onClick={() => setIsMobileMenuOpen(false)}
-                aria-label="Tutup menu"
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-zinc-200 transition-transform active:scale-95"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <nav className="mt-6 flex flex-col">
-              {NAV_ITEMS.map((link) => (
-                <Link
-                  key={link.key}
-                  href={link.href}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className={`border-b border-white/5 py-3.5 text-sm font-semibold transition-colors ${
-                    pathname === link.href ? 'text-white font-bold border-l-2 border-l-[#E50914] pl-3' : 'text-zinc-300 hover:text-white'
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </nav>
-
-            <div className="mt-7">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Telusuri Genre</p>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                {DISCOVER_GENRES.slice(0, 10).map((genre) => (
-                  <Link
-                    key={genre.id}
-                    href={`/discover?genre=${genre.id}&genreName=${encodeURIComponent(genre.name)}&view=grid`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="rounded-[4px] bg-[#232323] px-3 py-2 text-xs font-medium text-zinc-300 transition-colors hover:bg-[#2f2f2f] hover:text-white"
-                  >
-                    {genre.name}
-                  </Link>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-7">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Tahun Rilis</p>
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                {YEARS.map((year) => (
-                  <Link
-                    key={year.value}
-                    href={`/discover?year=${year.value}&view=grid`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="rounded-[4px] bg-[#232323] px-2 py-2 text-center text-xs font-medium text-zinc-300 transition-colors hover:bg-[#2f2f2f] hover:text-white"
-                  >
-                    {year.label}
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Mobile search modal */}
+      {/* Mobile Search Modal */}
       {isMobileSearchOpen && (
         <div
           className="fixed inset-0 z-[60]"
@@ -570,31 +611,32 @@ export default function NavigationBar() {
             type="button"
             onClick={() => setIsMobileSearchOpen(false)}
             aria-label="Tutup pencarian"
-            className="absolute inset-0 h-full w-full bg-black/75 backdrop-blur-sm"
+            className="absolute inset-0 h-full w-full bg-black/80 backdrop-blur-xs"
           />
-          <div className="relative mx-3 mt-3 overflow-hidden rounded-lg border border-white/15 bg-[#181818] shadow-2xl">
-            <div className="flex h-13 items-center gap-2 border-b border-white/10 px-3.5">
-              <Search size={18} className="shrink-0 text-zinc-400" />
+          <div className="relative mx-3 mt-3 overflow-hidden rounded-[4px] border border-white/25 bg-[#141414] shadow-2xl">
+            <div className="flex h-12 items-center gap-2 border-b border-white/10 px-3.5 bg-black">
+              <Search size={18} className="shrink-0 text-zinc-300" />
               <input
                 ref={mobileSearchRef}
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={handleSearchSubmit}
-                placeholder="Judul, film, acara TV..."
+                placeholder="Judul, film, genre..."
                 aria-label="Cari konten"
                 className="h-full min-w-0 flex-1 bg-transparent text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none"
               />
-              {query && (
-                <button
-                  type="button"
-                  onClick={() => setQuery('')}
-                  className="p-1 text-zinc-400 hover:text-white"
-                  aria-label="Bersihkan pencarian"
-                >
-                  <X size={18} />
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  if (query) setQuery('');
+                  else setIsMobileSearchOpen(false);
+                }}
+                className="p-1 text-zinc-400 hover:text-white"
+                aria-label="Tutup atau bersihkan pencarian"
+              >
+                <X size={18} />
+              </button>
             </div>
 
             <div className="max-h-[70vh] overflow-y-auto">

@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { Play } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
-export default function EpisodeSelector({ tvId, seasons, seriesTitle = '' }) {
+export default function EpisodeSelector({ tvId, seasons, seriesTitle = '', isModal = false }) {
   const { history } = useApp();
   // Filter seasons to only include valid ones (season_number > 0; season 0 is specials)
   const validSeasons = seasons?.filter((s) => s.season_number > 0) || [];
@@ -104,6 +104,7 @@ export default function EpisodeSelector({ tvId, seasons, seriesTitle = '' }) {
               <Link
                 key={ep.id}
                 href={watchUrl}
+                replace={isModal}
                 className={`group flex items-center gap-3 sm:gap-5 px-2 sm:px-5 py-4 sm:py-5 rounded-[4px] transition-colors duration-150 ${
                   isLastWatched ? 'bg-[#232323]' : 'hover:bg-[#232323]/80'
                 }`}
