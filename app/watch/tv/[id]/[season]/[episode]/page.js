@@ -7,8 +7,12 @@ async function getTVWatchData(id, seasonNum) {
 
   try {
     const [tvRes, seasonRes] = await Promise.all([
-      fetch(`https://api.themoviedb.org/3/tv/${id}?api_key=${apiKey}`),
-      fetch(`https://api.themoviedb.org/3/tv/${id}/season/${seasonNum}?api_key=${apiKey}`)
+      fetch(`https://api.themoviedb.org/3/tv/${id}?api_key=${apiKey}&language=id-ID`, {
+        next: { revalidate: 3600 },
+      }),
+      fetch(`https://api.themoviedb.org/3/tv/${id}/season/${seasonNum}?api_key=${apiKey}&language=id-ID`, {
+        next: { revalidate: 3600 },
+      }),
     ]);
 
     if (!tvRes.ok || !seasonRes.ok) return null;
@@ -18,7 +22,7 @@ async function getTVWatchData(id, seasonNum) {
 
     return {
       tv: tvData,
-      season: seasonData
+      season: seasonData,
     };
   } catch (err) {
     console.error(err);
@@ -36,6 +40,7 @@ export default async function WatchTV({ params }) {
   if (!data) notFound();
 
   const episodes = data.season.episodes || [];
+  const currentEpisodeObj = episodes.find((e) => Number(e.episode_number) === epNum);
   const totalSeasons = data.tv.number_of_seasons || 1;
 
   const hasPrevInSeason = epNum - 1 >= 1;
@@ -58,19 +63,18 @@ export default async function WatchTV({ params }) {
   }
 
   return (
-    <div className="py-6 bg-black min-h-[80vh] flex items-center justify-center">
-      <div className="w-full">
-        <VideoPlayer
-          id={id}
-          type="tv"
-          title={data.tv.name}
-          backdropPath={data.tv.backdrop_path}
-          season={seasonNum}
-          episode={epNum}
-          nextEpisodeHref={nextEpisodeHref}
-          prevEpisodeHref={prevEpisodeHref}
-        />
-      </div>
-    </div>
+    <VideoPlayer
+      id={id}
+      type="tv"
+      title={data.tv.name}
+      episodeTitle={currentEpisodeObj?.name || ''}
+      backdropPath={data.tv.backdrop_path}
+      season={seasonNum}
+      episode={epNum}
+      episodes={episodes}
+      seasons={data.tv.seasons || []}
+      nextEpisodeHref={nextEpisodeHref}
+      prevEpisodeHref={prevEpisodeHref}
+    />
   );
 }

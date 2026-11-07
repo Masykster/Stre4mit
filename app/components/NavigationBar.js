@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { Suspense, useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { Search, Heart, X, Menu } from 'lucide-react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { Search, X, Menu, ChevronDown } from 'lucide-react';
 import { YEARS } from '../lib/discover';
+import { DISCOVER_GENRES, getMatchScore } from '../lib/genres';
 
 // Glass surface for the scrolled pill. Kept as inline styles so the effect does
 // not depend on a custom class surviving the stylesheet pipeline.
@@ -19,81 +20,152 @@ const glassStyle = {
     '0 18px 40px -18px rgba(0, 0, 0, 0.85), 0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -1px 0 rgba(255, 255, 255, 0.05)',
 };
 
-const MOBILE_NAV_LINKS = [
-  { label: 'Beranda', href: '/' },
-  { label: 'Anime', href: '/discover?anime=true' },
-  { label: 'Movies', href: '/discover?type=movie' },
-  { label: 'TV Show', href: '/discover?type=tv' },
-  { label: 'Drama', href: '/discover?drama=true' },
-  { label: 'Watchlist', href: '/watchlist' },
+const NAV_ITEMS = [
+  { key: 'home', label: 'Beranda', href: '/' },
+  { key: 'tv', label: 'Acara TV', href: '/discover?type=tv' },
+  { key: 'movie', label: 'Film', href: '/discover?type=movie' },
+  { key: 'anime', label: 'Anime', href: '/discover?anime=true' },
+  { key: 'drama', label: 'Drama', href: '/discover?drama=true' },
+  { key: 'watchlist', label: 'Daftar Saya', href: '/watchlist' },
 ];
 
-const MOBILE_GENRES = [
-  { id: 28, name: 'Aksi' },
-  { id: 35, name: 'Komedi' },
-  { id: 18, name: 'Drama' },
-  { id: 27, name: 'Horor' },
-  { id: 10749, name: 'Romantis' },
-  { id: 878, name: 'Sci-Fi' },
-  { id: 16, name: 'Animasi' },
-  { id: 9648, name: 'Misteri' },
-];
+function resolveActiveKey(pathname, searchParams) {
+  if (pathname === '/') return 'home';
+  if (pathname === '/watchlist') return 'watchlist';
+  if (pathname === '/discover' && searchParams) {
+    if (searchParams.get('anime') === 'true') return 'anime';
+    if (searchParams.get('drama') === 'true') return 'drama';
+    if (searchParams.get('type') === 'tv') return 'tv';
+    if (searchParams.get('type') === 'movie') return 'movie';
+  }
+  return null;
+}
 
-function SearchResultsList({ loading, results, onSelect }) {
+function DesktopNavLinksInner({ pathname }) {
+  const searchParams = useSearchParams();
+  const activeKey = resolveActiveKey(pathname, searchParams);
+
+  return (
+    <nav className="hidden lg:flex items-center gap-5 text-[13px] tracking-wide">
+      {NAV_ITEMS.map((item) => {
+        const isActive = activeKey === item.key;
+        return (
+          <Link
+            key={item.key}
+            href={item.href}
+            className={`transition-colors duration-200 whitespace-nowrap ${
+              isActive
+                ? 'text-white font-bold'
+                : 'text-zinc-300/85 font-medium hover:text-zinc-100'
+            }`}
+          >
+            {item.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+function DesktopNavLinksFallback({ pathname }) {
+  const activeKey = resolveActiveKey(pathname, null);
+  return (
+    <nav className="hidden lg:flex items-center gap-5 text-[13px] tracking-wide">
+      {NAV_ITEMS.map((item) => {
+        const isActive = activeKey === item.key;
+        return (
+          <Link
+            key={item.key}
+            href={item.href}
+            className={`transition-colors duration-200 whitespace-nowrap ${
+              isActive
+                ? 'text-white font-bold'
+                : 'text-zinc-300/85 font-medium hover:text-zinc-100'
+            }`}
+          >
+            {item.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+function SearchResultsList({ loading, results, query, onSelect }) {
   if (loading) {
     return (
-      <div className="p-4 text-center text-sm text-zinc-400 flex items-center justify-center gap-2">
-        <span className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></span>
-        Mencari...
+      <div className="p-5 text-center text-xs text-zinc-400 flex items-center justify-center gap-2">
+        <span className="w-4 h-4 border-2 border-[#E50914] border-t-transparent rounded-full animate-spin"></span>
+        Mencari judul...
       </div>
     );
   }
 
   if (results.length === 0) {
     return (
-      <div className="p-4 text-center text-sm text-zinc-500">
-        Tidak ada hasil ditemukan
+      <div className="p-5 text-center text-xs text-zinc-500">
+        Tidak ada judul yang cocok dengan &ldquo;{query}&rdquo;
       </div>
     );
   }
 
   return (
-    <div className="divide-y divide-zinc-900">
-      {results.map((item) => (
+    <div>
+      <div className="divide-y divide-white/5">
+        {results.map((item) => {
+          const matchScore = getMatchScore(item.vote_average);
+          const year = item.release_date
+            ? item.release_date.split('-')[0]
+            : item.first_air_date
+            ? item.first_air_date.split('-')[0]
+            : '';
+          const thumbPath = item.backdrop_path || item.poster_path;
+
+          return (
+            <Link
+              key={`${item.media_type}-${item.id}`}
+              href={item.media_type === 'tv' ? `/tv/${item.id}` : `/movie/${item.id}`}
+              onClick={onSelect}
+              className="flex items-center gap-3 p-2.5 hover:bg-[#2a2a2a] transition-colors duration-150 group"
+            >
+              <div className="relative w-20 aspect-video bg-[#141414] rounded-[3px] overflow-hidden flex-shrink-0">
+                {thumbPath && (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={`https://image.tmdb.org/t/p/w300${thumbPath}`}
+                    alt={item.title || item.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                  />
+                )}
+              </div>
+              <div className="flex-grow min-w-0">
+                <h4 className="text-xs sm:text-[13px] font-semibold text-zinc-100 group-hover:text-white truncate">
+                  {item.title || item.name}
+                </h4>
+                <div className="text-[11px] text-zinc-400 mt-0.5 flex items-center gap-2">
+                  {matchScore && (
+                    <span className="text-emerald-400 font-bold">{matchScore}% Cocok</span>
+                  )}
+                  {year && <span>{year}</span>}
+                  <span className="uppercase text-[9px] border border-zinc-600 px-1 py-px rounded-[2px] text-zinc-300 font-semibold">
+                    {item.media_type === 'tv' ? 'Serial' : 'Film'}
+                  </span>
+                </div>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+
+      {query.trim() && (
         <Link
-          key={item.id}
-          href={item.media_type === 'tv' ? `/tv/${item.id}` : `/movie/${item.id}`}
+          href={`/search?q=${encodeURIComponent(query.trim())}`}
           onClick={onSelect}
-          className="flex items-center gap-3 p-3 hover:bg-zinc-900 transition-colors duration-150 group"
+          className="block w-full py-2.5 px-3 text-center text-xs font-bold text-zinc-300 hover:text-white bg-[#141414] hover:bg-[#232323] border-t border-white/10 transition-colors"
         >
-          <div className="relative w-10 h-14 bg-zinc-900 rounded overflow-hidden flex-shrink-0">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={`https://image.tmdb.org/t/p/w92${item.poster_path || item.backdrop_path}`}
-              alt={item.title || item.name}
-              className="w-full h-full object-cover"
-            />
-          </div>
-          <div className="flex-grow min-w-0">
-            <h4 className="text-sm font-semibold text-zinc-100 group-hover:text-red-500 transition-colors truncate">
-              {item.title || item.name}
-            </h4>
-            <p className="text-xs text-zinc-400 mt-0.5 flex items-center gap-2">
-              <span className="uppercase text-[10px] bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-300 font-bold">
-                {item.media_type === 'tv' ? 'TV' : 'Movie'}
-              </span>
-              <span>
-                {item.release_date ? item.release_date.split('-')[0] : item.first_air_date ? item.first_air_date.split('-')[0] : '-'}
-              </span>
-              {item.vote_average > 0 && (
-                <span className="text-yellow-500 font-bold">
-                  ★ {item.vote_average.toFixed(1)}
-                </span>
-              )}
-            </p>
-          </div>
+          Lihat semua hasil untuk &ldquo;{query.trim()}&rdquo; →
         </Link>
-      ))}
+      )}
     </div>
   );
 }
@@ -102,6 +174,7 @@ export default function NavigationBar() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
@@ -109,6 +182,7 @@ export default function NavigationBar() {
   const pathname = usePathname();
   const router = useRouter();
   const searchRef = useRef(null);
+  const desktopInputRef = useRef(null);
   const mobileSearchRef = useRef(null);
 
   const handleSearchSubmit = (e) => {
@@ -117,6 +191,9 @@ export default function NavigationBar() {
       setIsOpen(false);
       setIsMobileSearchOpen(false);
       router.push(`/search?q=${encodeURIComponent(query.trim())}`);
+    } else if (e.key === 'Escape') {
+      setIsOpen(false);
+      if (!query.trim()) setIsSearchExpanded(false);
     }
   };
 
@@ -125,18 +202,24 @@ export default function NavigationBar() {
   const [prevPathname, setPrevPathname] = useState(pathname);
   if (prevPathname !== pathname) {
     setPrevPathname(pathname);
-    setQuery('');
+    if (pathname !== '/search') {
+      setQuery('');
+      setIsSearchExpanded(false);
+    }
     setResults([]);
     setIsOpen(false);
     setIsMobileSearchOpen(false);
     setIsMobileMenuOpen(false);
   }
 
-  // Click outside listener
+  // Click outside listener for desktop expandable search
   useEffect(() => {
     function handleClickOutside(event) {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
         setIsOpen(false);
+        if (!desktopInputRef.current?.value?.trim()) {
+          setIsSearchExpanded(false);
+        }
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -213,6 +296,11 @@ export default function NavigationBar() {
     const controller = new AbortController();
 
     const delayDebounceFn = setTimeout(async () => {
+      if (pathname === '/search') {
+        router.replace(`/search?q=${encodeURIComponent(query.trim())}`, { scroll: false });
+        return;
+      }
+
       setLoading(true);
       setIsOpen(true);
       try {
@@ -233,389 +321,299 @@ export default function NavigationBar() {
       } finally {
         if (!cancelled) setLoading(false);
       }
-    }, 400);
+    }, 350);
 
     return () => {
       cancelled = true;
       clearTimeout(delayDebounceFn);
       controller.abort();
     };
-  }, [query]);
+  }, [query, pathname, router]);
+
+  // Hide navbar completely on dedicated fullscreen cinema player routes
+  if (pathname?.startsWith('/watch')) {
+    return null;
+  }
+
+  const openDesktopSearch = () => {
+    setIsSearchExpanded(true);
+    requestAnimationFrame(() => {
+      desktopInputRef.current?.focus();
+    });
+  };
 
   return (
     <>
-    <header
-      style={isScrolled ? glassStyle : undefined}
-      className={`fixed z-50 mx-auto flex items-center justify-between transition-all duration-300 ease-out ${
-        isScrolled
-          ? 'top-3 left-3 right-3 md:left-6 md:right-6 max-w-6xl h-14 rounded-full px-5 md:px-7'
-          : 'top-0 left-0 right-0 max-w-none h-16 px-4 md:px-8 bg-transparent'
-      }`}
-    >
-      {/* Brand & Nav Links */}
-      <div className="flex items-center gap-6 md:gap-10">
-        <Link href="/" className="text-red-600 font-extrabold text-xl md:text-2xl tracking-wider select-none active:scale-95 transition-transform duration-150">
-          STRE<span className="text-white">4</span>MIT
-        </Link>
-        <nav className="flex items-center gap-4 text-sm font-medium">
-          <Link 
-            href="/" 
-            className={`hidden md:inline transition-colors duration-150 hover:text-zinc-50 ${pathname === '/' ? 'text-red-500 font-semibold' : 'text-zinc-400'}`}
-          >
-            Beranda
-          </Link>
-          
-          {/* Desktop & Tablet Filters (ponytail: native tailwind responsive classes & hover dropdown groups) */}
-          
-          {/* Anime Dropdown */}
-          <div className="relative group hidden lg:block">
-            <Link 
-              href="/discover?anime=true" 
-              className={`transition-colors duration-150 hover:text-zinc-50 text-sm font-medium h-16 flex items-center ${pathname.includes('anime=true') ? 'text-red-500 font-semibold' : 'text-zinc-400'}`}
-            >
-              Anime
-            </Link>
-            <div className="absolute left-0 mt-0 w-48 bg-zinc-950 border border-zinc-900 rounded-lg shadow-2xl hidden group-hover:block z-50 p-2">
-              <div className="text-[10px] uppercase font-bold text-zinc-500 px-3 py-1 border-b border-zinc-900/50 mb-1">Urutan</div>
-              <Link href="/discover?anime=true&sortBy=popularity" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Terpopuler</Link>
-              <Link href="/discover?anime=true&sortBy=release_date" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Terbaru</Link>
-              <Link href="/discover?anime=true&sortBy=title" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Nama (A-Z)</Link>
-              
-              <div className="text-[10px] uppercase font-bold text-zinc-500 px-3 py-1 border-b border-zinc-900/50 my-1">Format</div>
-              <Link href="/discover?anime=true&subType=movie" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Anime Movie</Link>
-              <Link href="/discover?anime=true&subType=tv" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Anime Series</Link>
-              
-              <div className="text-[10px] uppercase font-bold text-zinc-500 px-3 py-1 border-b border-zinc-900/50 my-1">Tahun</div>
-              <div className="grid grid-cols-3 gap-1 px-2 py-1">
-                {YEARS.slice(0, 3).map((y) => (
-                  <Link key={y.value} href={`/discover?anime=true&year=${y.value}`} className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">{y.label}</Link>
-                ))}
-              </div>
-            </div>
-          </div>
-          
-          {/* Movies Dropdown */}
-          <div className="relative group hidden md:block">
-            <Link 
-              href="/discover?type=movie" 
-              className={`transition-colors duration-150 hover:text-zinc-50 text-sm font-medium h-16 flex items-center ${pathname.includes('type=movie') ? 'text-red-500 font-semibold' : 'text-zinc-400'}`}
-            >
-              Movies
-            </Link>
-            <div className="absolute left-0 mt-0 w-48 bg-zinc-950 border border-zinc-900 rounded-lg shadow-2xl hidden group-hover:block z-50 p-2">
-              <div className="text-[10px] uppercase font-bold text-zinc-500 px-3 py-1 border-b border-zinc-900/50 mb-1">Urutan</div>
-              <Link href="/discover?type=movie&sortBy=popularity" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Terpopuler</Link>
-              <Link href="/discover?type=movie&sortBy=release_date" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Terbaru</Link>
-              <Link href="/discover?type=movie&sortBy=title" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Nama (A-Z)</Link>
-              
-              <div className="text-[10px] uppercase font-bold text-zinc-500 px-3 py-1 border-b border-zinc-900/50 my-1">Tahun</div>
-              <div className="grid grid-cols-3 gap-1 px-2 py-1">
-                {YEARS.slice(0, 3).map((y) => (
-                  <Link key={y.value} href={`/discover?type=movie&year=${y.value}`} className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">{y.label}</Link>
-                ))}
-              </div>
-            </div>
-          </div>
-          
-          {/* TV Show Dropdown */}
-          <div className="relative group hidden lg:block">
-            <Link 
-              href="/discover?type=tv" 
-              className={`transition-colors duration-150 hover:text-zinc-50 text-sm font-medium h-16 flex items-center ${pathname.includes('type=tv') && !pathname.includes('anime=true') ? 'text-red-500 font-semibold' : 'text-zinc-400'}`}
-            >
-              TV Show
-            </Link>
-            <div className="absolute left-0 mt-0 w-48 bg-zinc-950 border border-zinc-900 rounded-lg shadow-2xl hidden group-hover:block z-50 p-2">
-              <div className="text-[10px] uppercase font-bold text-zinc-500 px-3 py-1 border-b border-zinc-900/50 mb-1">Urutan</div>
-              <Link href="/discover?type=tv&sortBy=popularity" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Terpopuler</Link>
-              <Link href="/discover?type=tv&sortBy=release_date" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Terbaru</Link>
-              <Link href="/discover?type=tv&sortBy=title" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Nama (A-Z)</Link>
-              
-              <div className="text-[10px] uppercase font-bold text-zinc-500 px-3 py-1 border-b border-zinc-900/50 my-1">Tahun</div>
-              <div className="grid grid-cols-3 gap-1 px-2 py-1">
-                {YEARS.slice(0, 3).map((y) => (
-                  <Link key={y.value} href={`/discover?type=tv&year=${y.value}`} className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">{y.label}</Link>
-                ))}
-              </div>
-            </div>
-          </div>
-          
-          {/* Drama Dropdown */}
-          <div className="relative group hidden lg:block">
-            <Link 
-              href="/discover?drama=true" 
-              className={`transition-colors duration-150 hover:text-zinc-50 text-sm font-medium h-16 flex items-center ${pathname.includes('drama=true') ? 'text-red-500 font-semibold' : 'text-zinc-400'}`}
-            >
-              Drama
-            </Link>
-            <div className="absolute left-0 mt-0 w-48 bg-zinc-950 border border-zinc-900 rounded-lg shadow-2xl hidden group-hover:block z-50 p-2">
-              <div className="text-[10px] uppercase font-bold text-zinc-500 px-3 py-1 border-b border-zinc-900/50 mb-1">Urutan</div>
-              <Link href="/discover?drama=true&sortBy=popularity" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Terpopuler</Link>
-              <Link href="/discover?drama=true&sortBy=release_date" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Terbaru</Link>
-              <Link href="/discover?drama=true&sortBy=title" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Nama (A-Z)</Link>
-              
-              <div className="text-[10px] uppercase font-bold text-zinc-500 px-3 py-1 border-b border-zinc-900/50 my-1">Format</div>
-              <Link href="/discover?drama=true&subType=movie" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Drama Movie</Link>
-              <Link href="/discover?drama=true&subType=tv" className="block px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">Drama Series</Link>
-              
-              <div className="text-[10px] uppercase font-bold text-zinc-500 px-3 py-1 border-b border-zinc-900/50 my-1">Tahun</div>
-              <div className="grid grid-cols-3 gap-1 px-2 py-1">
-                {YEARS.slice(0, 3).map((y) => (
-                  <Link key={y.value} href={`/discover?drama=true&year=${y.value}`} className="text-center py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 rounded">{y.label}</Link>
-                ))}
-              </div>
-            </div>
-          </div>
-          
-          {/* Genre Dropdown */}
-          <div className="relative group hidden md:block">
-            <button className="transition-colors duration-150 hover:text-zinc-50 text-zinc-400 text-sm font-medium h-16 flex items-center gap-1 focus:outline-none">
-              Genre
-            </button>
-            <div className="absolute left-0 mt-0 w-40 bg-zinc-950 border border-zinc-900 rounded-lg shadow-2xl hidden group-hover:block z-50">
-              <div className="py-1">
-                <Link href="/discover?genre=28&genreName=Aksi" className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">Aksi</Link>
-                <Link href="/discover?genre=35&genreName=Komedi" className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">Komedi</Link>
-                <Link href="/discover?genre=18&genreName=Drama" className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">Drama</Link>
-                <Link href="/discover?genre=27&genreName=Horor" className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">Horor</Link>
-                <Link href="/discover?genre=10749&genreName=Romantis" className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">Romantis</Link>
-                <Link href="/discover?genre=878&genreName=Sci-Fi" className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">Sci-Fi</Link>
-                <Link href="/discover?genre=16&genreName=Animasi" className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">Animasi</Link>
-                <Link href="/discover?genre=9648&genreName=Misteri" className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">Misteri</Link>
-              </div>
-            </div>
-          </div>
-
-          {/* Years Dropdown */}
-          <div className="relative group hidden md:block">
-            <button className="transition-colors duration-150 hover:text-zinc-50 text-zinc-400 text-sm font-medium h-16 flex items-center gap-1 focus:outline-none">
-              Years
-            </button>
-            <div className="absolute left-0 mt-0 w-32 bg-zinc-950 border border-zinc-900 rounded-lg shadow-2xl hidden group-hover:block z-50">
-              <div className="py-1">
-                {YEARS.map((y) => (
-                  <Link key={y.value} href={`/discover?year=${y.value}`} className="block px-4 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900">{y.label}</Link>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <Link 
-            href="/watchlist" 
-            className={`transition-colors duration-150 hover:text-zinc-50 flex items-center gap-1.5 ${pathname === '/watchlist' ? 'text-red-500 font-semibold' : 'text-zinc-400'}`}
-          >
-            <Heart size={16} />
-            <span className="hidden sm:inline">Watchlist</span>
-          </Link>
-        </nav>
-      </div>
-
-      <div className="flex items-center gap-2">
-      {/* Search Bar (tablet & desktop) */}
-      <div ref={searchRef} className="relative hidden w-48 sm:block sm:w-64">
-        <div className="relative">
-          <input
-            type="text"
-            id="search-query"
-            name="q"
-            placeholder="Cari film atau TV series..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={handleSearchSubmit}
-            onFocus={() => query.trim() && setIsOpen(true)}
-            aria-label="Cari konten"
-            className="w-full h-10 pl-10 pr-8 bg-zinc-900/80 text-zinc-100 rounded-full border border-zinc-800 text-sm focus:outline-none focus:border-red-600 focus:bg-zinc-900 transition-colors duration-150 placeholder-zinc-500"
-          />
-          <Search size={18} className="absolute left-3.5 top-2.5 text-zinc-500" />
-          {query && (
-            <button 
-              onClick={() => setQuery('')}
-              className="absolute right-3 top-2.5 text-zinc-500 hover:text-zinc-200"
-              aria-label="Bersihkan pencarian"
-            >
-              <X size={18} />
-            </button>
-          )}
-        </div>
-
-        {/* Dropdown Results Overlay */}
-        {isOpen && (
-          <div className="absolute right-0 mt-2 w-[280px] sm:w-[360px] bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl z-50">
-            <SearchResultsList
-              loading={loading}
-              results={results}
-              onSelect={() => setIsOpen(false)}
-            />
-          </div>
-        )}
-      </div>
-
-        {/* Mobile search trigger */}
-        <button
-          type="button"
-          onClick={() => {
-            setIsMobileSearchOpen(true);
-            setIsMobileMenuOpen(false);
-          }}
-          aria-label="Buka pencarian"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/80 text-zinc-300 transition-transform active:scale-95 sm:hidden"
-        >
-          <Search size={18} />
-        </button>
-
-        {/* Mobile menu trigger */}
-        <button
-          type="button"
-          onClick={() => setIsMobileMenuOpen(true)}
-          aria-label="Buka menu"
-          aria-expanded={isMobileMenuOpen}
-          aria-controls="mobile-menu"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/80 text-zinc-300 transition-transform active:scale-95 md:hidden"
-        >
-          <Menu size={20} />
-        </button>
-      </div>
-    </header>
-
-    {/* Mobile navigation drawer */}
-    {isMobileMenuOpen && (
-      <div
-        id="mobile-menu"
-        className="fixed inset-0 z-[60] md:hidden"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Menu navigasi"
+      <header
+        style={isScrolled ? glassStyle : undefined}
+        className={`fixed z-50 mx-auto flex items-center justify-between transition-all duration-300 ease-out ${
+          isScrolled
+            ? 'top-3 left-3 right-3 md:left-6 md:right-6 max-w-6xl h-14 rounded-full px-5 md:px-7'
+            : 'top-0 left-0 right-0 max-w-none h-16 px-4 md:px-8 bg-transparent'
+        }`}
       >
-        <button
-          type="button"
-          onClick={() => setIsMobileMenuOpen(false)}
-          aria-label="Tutup menu"
-          className="absolute inset-0 h-full w-full bg-black/70 backdrop-blur-sm"
-        />
-        <div className="absolute right-0 top-0 flex h-full w-[85%] max-w-sm flex-col overflow-y-auto border-l border-zinc-800 bg-zinc-950 px-5 pb-10 pt-4 shadow-2xl">
-          <div className="flex items-center justify-between">
-            <Link
-              href="/"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="select-none text-xl font-extrabold tracking-wider text-red-600 transition-transform active:scale-95"
-            >
-              STRE<span className="text-white">4</span>MIT
-            </Link>
+        {/* Left: Brand & Netflix-style Links */}
+        <div className="flex items-center gap-5 md:gap-8">
+          <Link
+            href="/"
+            className="text-[#E50914] font-black text-xl md:text-2xl tracking-wider select-none active:scale-95 transition-transform duration-150"
+          >
+            STRE<span className="text-white">4</span>MIT
+          </Link>
+
+          <Suspense fallback={<DesktopNavLinksFallback pathname={pathname} />}>
+            <DesktopNavLinksInner pathname={pathname} />
+          </Suspense>
+
+          {/* Tablet compact "Telusuri ▾" dropdown (Netflix medium-viewport pattern) */}
+          <div className="relative group hidden md:block lg:hidden">
             <button
               type="button"
-              onClick={() => setIsMobileMenuOpen(false)}
-              aria-label="Tutup menu"
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900 text-zinc-300 transition-transform active:scale-95"
+              className="flex items-center gap-1 text-xs font-bold text-white py-2 focus:outline-none"
             >
-              <X size={18} />
+              Telusuri
+              <ChevronDown size={14} className="transition-transform duration-200 group-hover:rotate-180" />
             </button>
-          </div>
-
-          <nav className="mt-6 flex flex-col">
-            {MOBILE_NAV_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={`border-b border-zinc-900 py-3.5 text-sm font-semibold transition-colors ${
-                  pathname === link.href ? 'text-red-500' : 'text-zinc-200 hover:text-red-500'
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-
-          <div className="mt-8">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Genre</p>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              {MOBILE_GENRES.map((genre) => (
-                <Link
-                  key={genre.id}
-                  href={`/discover?genre=${genre.id}&genreName=${encodeURIComponent(genre.name)}`}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-xs font-medium text-zinc-300 transition-colors hover:border-red-900 hover:text-red-400"
-                >
-                  {genre.name}
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-8">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Tahun</p>
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              {YEARS.map((year) => (
-                <Link
-                  key={year.value}
-                  href={`/discover?year=${year.value}`}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="rounded-lg border border-zinc-800 bg-zinc-900/60 px-2 py-2 text-center text-xs font-medium text-zinc-300 transition-colors hover:border-red-900 hover:text-red-400"
-                >
-                  {year.label}
-                </Link>
-              ))}
+            <div className="absolute left-0 top-full pt-2 hidden group-hover:block z-50">
+              <div className="w-48 bg-[#141414]/95 backdrop-blur-xl border border-white/15 border-t-2 border-t-white rounded-[4px] shadow-2xl py-2 text-center">
+                {NAV_ITEMS.map((item) => (
+                  <Link
+                    key={item.key}
+                    href={item.href}
+                    className="block px-4 py-2.5 text-xs font-semibold text-zinc-300 hover:text-white hover:bg-white/5 transition-colors"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    )}
 
-    {/* Mobile search modal */}
-    {isMobileSearchOpen && (
-      <div
-        className="fixed inset-0 z-[60]"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Pencarian"
-      >
-        <button
-          type="button"
-          onClick={() => setIsMobileSearchOpen(false)}
-          aria-label="Tutup pencarian"
-          className="absolute inset-0 h-full w-full bg-black/70 backdrop-blur-sm"
-        />
-        <div className="relative mx-3 mt-3 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950/95 shadow-2xl">
-          <div className="flex h-14 items-center gap-2 border-b border-zinc-900 px-3">
-            <Search size={18} className="shrink-0 text-zinc-500" />
-            <input
-              ref={mobileSearchRef}
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={handleSearchSubmit}
-              placeholder="Cari film atau TV series..."
-              aria-label="Cari konten"
-              className="h-full min-w-0 flex-1 bg-transparent text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none"
-            />
-            {query && (
+        {/* Right: Expandable Netflix Search & Mobile Triggers */}
+        <div className="flex items-center gap-2">
+          {/* Expandable Search Bar (tablet & desktop) */}
+          <div ref={searchRef} className="relative hidden sm:flex items-center">
+            {isSearchExpanded || query ? (
+              <div className="flex items-center w-52 md:w-64 h-9 px-3 rounded-full bg-black/75 border border-white/60 transition-all duration-200">
+                <Search size={16} className="shrink-0 text-zinc-200 mr-2" />
+                <input
+                  ref={desktopInputRef}
+                  type="text"
+                  id="search-query"
+                  name="q"
+                  placeholder="Judul, film, serial..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={handleSearchSubmit}
+                  onFocus={() => query.trim() && pathname !== '/search' && setIsOpen(true)}
+                  aria-label="Cari konten"
+                  className="w-full bg-transparent text-xs md:text-[13px] text-white placeholder-zinc-400 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuery('');
+                    setIsOpen(false);
+                    setIsSearchExpanded(false);
+                  }}
+                  className="ml-1 text-zinc-400 hover:text-white transition-colors"
+                  aria-label="Tutup pencarian"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+            ) : (
               <button
                 type="button"
-                onClick={() => setQuery('')}
-                className="p-1 text-zinc-500 hover:text-zinc-200"
-                aria-label="Bersihkan pencarian"
+                onClick={openDesktopSearch}
+                aria-label="Buka pencarian"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-zinc-100 hover:bg-white/10 transition-colors active:scale-95"
+              >
+                <Search size={18} />
+              </button>
+            )}
+
+            {/* Dropdown Results Overlay */}
+            {isOpen && pathname !== '/search' && (
+              <div className="absolute right-0 top-full mt-2.5 w-[310px] sm:w-[360px] bg-[#181818] border border-white/15 rounded-md overflow-hidden shadow-2xl shadow-black z-50">
+                <SearchResultsList
+                  loading={loading}
+                  results={results}
+                  query={query}
+                  onSelect={() => setIsOpen(false)}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Mobile search trigger */}
+          <button
+            type="button"
+            onClick={() => {
+              setIsMobileSearchOpen(true);
+              setIsMobileMenuOpen(false);
+            }}
+            aria-label="Buka pencarian"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-100 hover:bg-white/10 transition-transform active:scale-95 sm:hidden"
+          >
+            <Search size={18} />
+          </button>
+
+          {/* Mobile menu trigger */}
+          <button
+            type="button"
+            onClick={() => setIsMobileMenuOpen(true)}
+            aria-label="Buka menu"
+            aria-expanded={isMobileMenuOpen}
+            aria-controls="mobile-menu"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-100 hover:bg-white/10 transition-transform active:scale-95 md:hidden"
+          >
+            <Menu size={20} />
+          </button>
+        </div>
+      </header>
+
+      {/* Mobile navigation drawer */}
+      {isMobileMenuOpen && (
+        <div
+          id="mobile-menu"
+          className="fixed inset-0 z-[60] md:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Menu navigasi"
+        >
+          <button
+            type="button"
+            onClick={() => setIsMobileMenuOpen(false)}
+            aria-label="Tutup menu"
+            className="absolute inset-0 h-full w-full bg-black/75 backdrop-blur-sm"
+          />
+          <div className="absolute right-0 top-0 flex h-full w-[85%] max-w-sm flex-col overflow-y-auto border-l border-white/10 bg-[#141414] px-5 pb-10 pt-4 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <Link
+                href="/"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="select-none text-xl font-black tracking-wider text-[#E50914] transition-transform active:scale-95"
+              >
+                STRE<span className="text-white">4</span>MIT
+              </Link>
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen(false)}
+                aria-label="Tutup menu"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-zinc-200 transition-transform active:scale-95"
               >
                 <X size={18} />
               </button>
-            )}
-          </div>
+            </div>
 
-          <div className="max-h-[70vh] overflow-y-auto">
-            {query.trim() ? (
-              <SearchResultsList
-                loading={loading}
-                results={results}
-                onSelect={() => setIsMobileSearchOpen(false)}
-              />
-            ) : (
-              <p className="p-6 text-center text-sm text-zinc-500">
-                Ketik judul film atau TV series.
-              </p>
-            )}
+            <nav className="mt-6 flex flex-col">
+              {NAV_ITEMS.map((link) => (
+                <Link
+                  key={link.key}
+                  href={link.href}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`border-b border-white/5 py-3.5 text-sm font-semibold transition-colors ${
+                    pathname === link.href ? 'text-white font-bold border-l-2 border-l-[#E50914] pl-3' : 'text-zinc-300 hover:text-white'
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+
+            <div className="mt-7">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Telusuri Genre</p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {DISCOVER_GENRES.slice(0, 10).map((genre) => (
+                  <Link
+                    key={genre.id}
+                    href={`/discover?genre=${genre.id}&genreName=${encodeURIComponent(genre.name)}&view=grid`}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="rounded-[4px] bg-[#232323] px-3 py-2 text-xs font-medium text-zinc-300 transition-colors hover:bg-[#2f2f2f] hover:text-white"
+                  >
+                    {genre.name}
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-7">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Tahun Rilis</p>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {YEARS.map((year) => (
+                  <Link
+                    key={year.value}
+                    href={`/discover?year=${year.value}&view=grid`}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="rounded-[4px] bg-[#232323] px-2 py-2 text-center text-xs font-medium text-zinc-300 transition-colors hover:bg-[#2f2f2f] hover:text-white"
+                  >
+                    {year.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    )}
+      )}
+
+      {/* Mobile search modal */}
+      {isMobileSearchOpen && (
+        <div
+          className="fixed inset-0 z-[60]"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Pencarian"
+        >
+          <button
+            type="button"
+            onClick={() => setIsMobileSearchOpen(false)}
+            aria-label="Tutup pencarian"
+            className="absolute inset-0 h-full w-full bg-black/75 backdrop-blur-sm"
+          />
+          <div className="relative mx-3 mt-3 overflow-hidden rounded-lg border border-white/15 bg-[#181818] shadow-2xl">
+            <div className="flex h-13 items-center gap-2 border-b border-white/10 px-3.5">
+              <Search size={18} className="shrink-0 text-zinc-400" />
+              <input
+                ref={mobileSearchRef}
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={handleSearchSubmit}
+                placeholder="Judul, film, acara TV..."
+                aria-label="Cari konten"
+                className="h-full min-w-0 flex-1 bg-transparent text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none"
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery('')}
+                  className="p-1 text-zinc-400 hover:text-white"
+                  aria-label="Bersihkan pencarian"
+                >
+                  <X size={18} />
+                </button>
+              )}
+            </div>
+
+            <div className="max-h-[70vh] overflow-y-auto">
+              {query.trim() ? (
+                <SearchResultsList
+                  loading={loading}
+                  results={results}
+                  query={query}
+                  onSelect={() => setIsMobileSearchOpen(false)}
+                />
+              ) : (
+                <p className="p-6 text-center text-xs text-zinc-500">
+                  Ketik judul film atau acara TV yang ingin ditonton.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

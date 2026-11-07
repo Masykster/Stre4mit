@@ -1,17 +1,20 @@
 import DiscoverList from '../components/DiscoverList';
+import DiscoverBrowseView from '../components/DiscoverBrowseView';
+import DiscoverHeaderBar from '../components/DiscoverHeaderBar';
 import Link from 'next/link';
-import { ArrowLeft, Film } from 'lucide-react';
-import { buildDiscoverRequest, mapDiscoverResults, MONTHS } from '../lib/discover';
+import { Film } from 'lucide-react';
+import { buildDiscoverRequest, mapDiscoverResults } from '../lib/discover';
 
 async function getDiscoverData(searchParams) {
   const apiKey = process.env.TMDB_API_KEY;
   if (!apiKey || apiKey === 'your_tmdb_api_key_here') return [];
 
   // Shared query builder keeps this in sync with client-side pagination
-  const { endpoint, query, mediaType } = buildDiscoverRequest(searchParams);
+  const { endpoint, query, mediaType } = buildDiscoverRequest({
+    sortBy: 'popularity',
+    ...searchParams,
+  });
 
-  // Server-side fetch hits TMDb directly, so the API key is attached here
-  // (client requests go through /api/tmdb which injects the key instead).
   const authorizedQuery = new URLSearchParams(query);
   authorizedQuery.set('api_key', apiKey);
 
@@ -21,7 +24,6 @@ async function getDiscoverData(searchParams) {
     if (!res.ok) return [];
     const data = await res.json();
 
-    // Explicitly set media_type on items so MovieCard handles navigation routes correctly
     return mapDiscoverResults(data.results, mediaType);
   } catch (err) {
     console.error("Discover fetch error:", err);
@@ -29,97 +31,109 @@ async function getDiscoverData(searchParams) {
   }
 }
 
-export default async function DiscoverPage({ searchParams }) {
-  const resolvedSearchParams = await searchParams;
-  const items = await getDiscoverData(resolvedSearchParams);
+function buildCategoryMeta(searchParams) {
+  const { type, anime, drama, genreName } = searchParams;
 
-  const { type, genreName, year, month, anime, drama, subType } = resolvedSearchParams;
-  
-  // Resolve page header title with dynamic filters summary
-  let pageTitle = "Temukan Konten";
-  let suffix = "";
-  
-  if (year) {
-    if (month) {
-      const monthName = MONTHS[parseInt(month) - 1]?.label || "";
-      suffix = ` (${monthName} ${year})`;
-    } else {
-      suffix = ` (${year})`;
-    }
-  } else if (month) {
-    const monthName = MONTHS[parseInt(month) - 1]?.label || "";
-    suffix = ` (${monthName})`;
-  }
+  let categoryLabel = 'Film';
+  const baseParams = new URLSearchParams();
 
   if (anime === 'true') {
-    if (subType === 'movie') {
-      pageTitle = `Anime Movie${suffix}`;
-    } else if (subType === 'tv') {
-      pageTitle = `Anime Series${suffix}`;
-    } else {
-      pageTitle = `Anime${suffix}`;
-    }
+    categoryLabel = 'Anime';
+    baseParams.set('anime', 'true');
   } else if (drama === 'true') {
-    if (subType === 'movie') {
-      pageTitle = `Film Drama${suffix}`;
-    } else if (subType === 'tv') {
-      pageTitle = `Drama Series${suffix}`;
-    } else {
-      pageTitle = `Drama${suffix}`;
-    }
-  } else if (genreName) {
-    pageTitle = `Genre: ${genreName}${suffix}`;
-  } else if (type === 'movie') {
-    pageTitle = `Film${suffix}`;
+    categoryLabel = 'Drama';
+    baseParams.set('drama', 'true');
   } else if (type === 'tv') {
-    pageTitle = `TV Series${suffix}`;
-  } else if (year || month) {
-    pageTitle = `Rilis${suffix}`;
+    categoryLabel = 'Acara TV';
+    baseParams.set('type', 'tv');
+  } else if (type === 'movie') {
+    categoryLabel = 'Film';
+    baseParams.set('type', 'movie');
+  } else if (genreName) {
+    categoryLabel = 'Telusuri';
   }
 
-  return (
-    <div className="relative min-h-screen pb-16 bg-black text-zinc-100 pt-8 px-4 md:px-8">
-      <div className="max-w-6xl mx-auto space-y-8">
-        
-        {/* Header */}
-        <div className="flex items-center gap-4">
-          <Link 
-            href="/" 
-            className="text-zinc-400 hover:text-zinc-100 p-2.5 rounded-full hover:bg-zinc-900 transition-colors duration-150 active:scale-95"
-            title="Kembali ke Beranda"
-          >
-            <ArrowLeft size={20} />
-          </Link>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white leading-tight">
-              {pageTitle}
-            </h1>
-          </div>
-        </div>
+  const baseQuery = baseParams.toString();
+  const browseHref = baseQuery ? `/discover?${baseQuery}&view=rows` : '/discover?type=movie&view=rows';
 
-        {/* Results Grid with Infinite Scroll */}
+  const gridParams = new URLSearchParams(baseParams);
+  if (searchParams.genre) gridParams.set('genre', searchParams.genre);
+  if (searchParams.genreName) gridParams.set('genreName', searchParams.genreName);
+  if (searchParams.year) gridParams.set('year', searchParams.year);
+  if (searchParams.month) gridParams.set('month', searchParams.month);
+  if (searchParams.sortBy) gridParams.set('sortBy', searchParams.sortBy);
+  if (searchParams.subType) gridParams.set('subType', searchParams.subType);
+  gridParams.set('view', 'grid');
+  const gridHref = `/discover?${gridParams.toString()}`;
+
+  return {
+    categoryLabel,
+    baseCategoryHref: browseHref,
+    browseHref,
+    gridHref,
+  };
+}
+
+export default async function DiscoverPage({ searchParams }) {
+  const resolvedSearchParams = await searchParams;
+  const { genre, genreName, year, month, sortBy, subType, view } = resolvedSearchParams;
+
+  const hasSpecificFilter = Boolean(genre || year || month || sortBy || subType);
+  const isBrowseMode = view === 'rows' || (view !== 'grid' && !hasSpecificFilter);
+
+  const { categoryLabel, baseCategoryHref, browseHref, gridHref } = buildCategoryMeta(resolvedSearchParams);
+
+  const headerBar = (
+    <DiscoverHeaderBar
+      categoryLabel={categoryLabel}
+      baseCategoryHref={baseCategoryHref}
+      activeGenreName={genreName || null}
+      isBrowseMode={isBrowseMode}
+      browseHref={browseHref}
+      gridHref={gridHref}
+      searchParams={resolvedSearchParams}
+    />
+  );
+
+  // Mode 1: Netflix Category Browse (Hero Billboard + Top 10 + Curated Genre Rows)
+  if (isBrowseMode) {
+    return (
+      <DiscoverBrowseView
+        searchParams={resolvedSearchParams}
+        headerSlot={headerBar}
+      />
+    );
+  }
+
+  // Mode 2: Filter & Infinite Scroll Grid
+  const items = await getDiscoverData(resolvedSearchParams);
+
+  return (
+    <div className="relative min-h-screen pb-20 bg-[#141414] text-zinc-100 pt-24 px-4 md:px-12">
+      <div className="space-y-6">
+        {headerBar}
+
         {items.length > 0 ? (
-          <DiscoverList 
-            key={JSON.stringify(resolvedSearchParams)} 
-            initialItems={items} 
-            searchParams={resolvedSearchParams} 
+          <DiscoverList
+            key={JSON.stringify(resolvedSearchParams)}
+            initialItems={items}
+            searchParams={resolvedSearchParams}
           />
         ) : (
-          <div className="flex flex-col items-center justify-center py-20 text-center max-w-md mx-auto space-y-4">
-            <Film className="text-zinc-700 w-16 h-16 animate-pulse" />
-            <h2 className="text-lg font-bold text-zinc-300">Konten Tidak Ditemukan</h2>
+          <div className="flex flex-col items-center justify-center py-24 text-center max-w-md mx-auto space-y-4">
+            <Film className="text-zinc-600 w-14 h-14" />
+            <h2 className="text-base md:text-lg font-bold text-zinc-200">Judul Tidak Ditemukan</h2>
             <p className="text-xs text-zinc-400 leading-relaxed">
-              Maaf, tidak ada hasil yang cocok untuk filter ini. Silakan kembali ke halaman utama untuk menelusuri konten menarik lainnya.
+              Tidak ada tayangan yang cocok untuk kombinasi filter ini. Coba pilih genre atau tahun lainnya.
             </p>
-            <Link 
-              href="/" 
-              className="inline-flex items-center justify-center bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold text-xs px-6 py-2.5 rounded-full transition-all duration-150"
+            <Link
+              href={browseHref}
+              className="inline-flex items-center justify-center bg-white hover:bg-white/85 active:scale-95 text-black font-bold text-xs px-6 py-2.5 rounded-[4px] transition-all duration-150"
             >
-              Kembali ke Beranda
+              Kembali ke {categoryLabel}
             </Link>
           </div>
         )}
-        
       </div>
     </div>
   );

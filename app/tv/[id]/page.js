@@ -1,21 +1,34 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Play, Star, Calendar, Tv } from 'lucide-react';
-import WatchlistButton from '../../components/WatchlistButton';
-import MovieCard from '../../components/MovieCard';
-import CastRow from '../../components/CastRow';
+import MediaHeroHeader from '../../components/MediaHeroHeader';
 import EpisodeSelector from '../../components/EpisodeSelector';
+import MoreLikeThisGrid from '../../components/MoreLikeThisGrid';
+import CastRow from '../../components/CastRow';
+import { getMatchScore, getMaturityBadge } from '../../lib/genres';
 
 async function getTVData(id) {
   const apiKey = process.env.TMDB_API_KEY;
   if (!apiKey || apiKey === 'your_tmdb_api_key_here') return null;
 
-  const url = `https://api.themoviedb.org/3/tv/${id}?api_key=${apiKey}&append_to_response=credits,recommendations,images`;
+  const url = `https://api.themoviedb.org/3/tv/${id}?api_key=${apiKey}&language=id-ID&append_to_response=credits,recommendations,images,videos&include_image_language=id,en,null&include_video_language=id,en,null`;
   try {
     const res = await fetch(url, { next: { revalidate: 3600 } });
     if (!res.ok) return null;
-    return await res.json();
+    const data = await res.json();
+
+    if (!data.overview) {
+      const enRes = await fetch(
+        `https://api.themoviedb.org/3/tv/${id}?api_key=${apiKey}&language=en-US`,
+        { next: { revalidate: 3600 } }
+      );
+      if (enRes.ok) {
+        const enData = await enRes.json();
+        data.overview = enData.overview || '';
+        data.tagline = data.tagline || enData.tagline || '';
+      }
+    }
+
+    return data;
   } catch (err) {
     console.error(err);
     return null;
@@ -31,156 +44,131 @@ export default async function TVDetails({ params }) {
   }
 
   const title = data.name;
-  const rating = data.vote_average ? data.vote_average.toFixed(1) : null;
   const year = data.first_air_date ? data.first_air_date.split('-')[0] : '';
-  const seasonsInfo = data.number_of_seasons ? `${data.number_of_seasons} Musim` : '';
-  const episodesInfo = data.number_of_episodes ? `${data.number_of_episodes} Episode` : '';
+  const seasonsInfo = data.number_of_seasons
+    ? `${data.number_of_seasons} Bagian`
+    : '';
   const genres = data.genres || [];
   const overview = data.overview || 'Sinopsis belum tersedia.';
-  const cast = data.credits?.cast?.slice(0, 12) || [];
-  const recommendations = (data.recommendations?.results || []).filter(item => !item.adult).slice(0, 6);
-  const watchUrl = `/watch/tv/${data.id}/1/1`;
+  const cast = data.credits?.cast?.slice(0, 14) || [];
+  const creators = (data.created_by || []).map((c) => c.name).join(', ');
+  const recommendations = (data.recommendations?.results || [])
+    .filter((item) => !item.adult && (item.backdrop_path || item.poster_path))
+    .slice(0, 9);
 
   const logos = data.images?.logos || [];
-  const logo = logos.find(l => l.iso_639_1 === 'id') ||
-               logos.find(l => l.iso_639_1 === 'en') ||
-               logos[0];
+  const logo =
+    logos.find((l) => l.iso_639_1 === 'id') ||
+    logos.find((l) => l.iso_639_1 === 'en') ||
+    logos[0];
   const logoUrl = logo ? `https://image.tmdb.org/t/p/w500${logo.file_path}` : null;
 
-  return (
-    <div className="relative min-h-screen pb-16 bg-black text-zinc-100">
-      {/* Blurred Backdrop Background */}
-      <div className="absolute top-0 left-0 right-0 h-[60vh] overflow-hidden select-none z-0">
-        {data.backdrop_path && (
-          <>
-            <Image
-              src={`https://image.tmdb.org/t/p/w1280${data.backdrop_path}`}
-              alt={title}
-              fill
-              priority
-              className="object-cover opacity-30 blur-xs"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent" />
-          </>
-        )}
-      </div>
+  const videos = data.videos?.results || [];
+  const youtubeVideo =
+    videos.find((v) => v.site === 'YouTube' && v.type === 'Trailer' && v.official) ||
+    videos.find((v) => v.site === 'YouTube' && v.type === 'Trailer') ||
+    videos.find((v) => v.site === 'YouTube' && v.type === 'Teaser');
 
-      {/* Content Container */}
-      <div className="relative z-10 max-w-6xl mx-auto px-4 pt-10 sm:pt-16">
-        <div className="flex flex-col md:flex-row gap-8 items-start">
-          {/* Left: Poster */}
-          <div className="relative w-44 sm:w-60 aspect-[2/3] bg-zinc-900 rounded-xl overflow-hidden shadow-2xl border border-zinc-800/80 mx-auto md:mx-0 flex-shrink-0">
-            {data.poster_path ? (
-              <Image
-                src={`https://image.tmdb.org/t/p/w500${data.poster_path}`}
-                alt={title}
-                fill
-                sizes="(max-width: 768px) 176px, 240px"
-                className="object-cover"
-              />
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center text-zinc-500 font-bold p-4 text-center">
-                {title}
+  const matchScore = getMatchScore(data.vote_average);
+  const maturity = getMaturityBadge(data);
+
+  return (
+    <div className="min-h-screen pb-20 bg-[#141414] text-zinc-100">
+      {/* Top 16:9 Netflix Media Showcase Header */}
+      <MediaHeroHeader
+        data={data}
+        mediaType="tv"
+        title={title}
+        logoUrl={logoUrl}
+        trailerKey={youtubeVideo?.key || null}
+      />
+
+      {/* Main Details Container */}
+      <div className="max-w-6xl mx-auto px-4 md:px-12 pt-4 space-y-12">
+        {/* Netflix 2-Column Metadata Split */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+          {/* Left 65%: Match %, Year, Maturity, Seasons, HD, Synopsis */}
+          <div className="md:col-span-8 space-y-4">
+            <div className="flex flex-wrap items-center gap-2.5 text-xs sm:text-sm font-semibold text-zinc-300">
+              {matchScore && (
+                <span className="text-emerald-400 font-bold text-sm sm:text-base">
+                  {matchScore}% Cocok
+                </span>
+              )}
+              {year && (
+                <Link
+                  href={`/discover?type=tv&year=${year}&view=grid`}
+                  className="hover:text-white transition-colors"
+                >
+                  {year}
+                </Link>
+              )}
+              <span className="border border-zinc-500 px-1.5 py-px text-xs text-zinc-200">
+                {maturity}
+              </span>
+              {seasonsInfo && <span>{seasonsInfo}</span>}
+              <span className="border border-zinc-500/80 rounded-[2px] px-1.5 py-px text-[10px] text-zinc-300 font-bold">
+                HD
+              </span>
+            </div>
+
+            {data.tagline && (
+              <p className="text-sm sm:text-base font-bold text-white italic">
+                &ldquo;{data.tagline}&rdquo;
+              </p>
+            )}
+
+            <p className="text-zinc-200 text-sm sm:text-[15px] leading-relaxed">
+              {overview}
+            </p>
+          </div>
+
+          {/* Right 35%: Cast, Genres, Creators */}
+          <div className="md:col-span-4 space-y-3 text-xs sm:text-[13px] leading-relaxed">
+            {cast.length > 0 && (
+              <div>
+                <span className="text-zinc-500">Pemeran: </span>
+                <span className="text-zinc-200">
+                  {cast.slice(0, 4).map((c) => c.name).join(', ')}
+                  {cast.length > 4 ? ', lainnya' : ''}
+                </span>
+              </div>
+            )}
+
+            {genres.length > 0 && (
+              <div>
+                <span className="text-zinc-500">Genre: </span>
+                {genres.map((g, idx) => (
+                  <span key={g.id}>
+                    {idx > 0 && ', '}
+                    <Link
+                      href={`/discover?type=tv&genre=${g.id}&genreName=${encodeURIComponent(g.name)}&view=grid`}
+                      className="text-zinc-200 hover:underline"
+                    >
+                      {g.name}
+                    </Link>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {creators && (
+              <div>
+                <span className="text-zinc-500">Kreator: </span>
+                <span className="text-zinc-200">{creators}</span>
               </div>
             )}
           </div>
-
-          {/* Right: Info */}
-          <div className="w-full min-w-0 flex-grow space-y-6 text-center md:text-left">
-            <div className="space-y-3">
-              {logoUrl ? (
-                <div className="relative h-20 md:h-28 w-full max-w-[280px] sm:max-w-[340px] md:max-w-[400px] mx-auto md:mx-0 select-none">
-                  <Image
-                    src={logoUrl}
-                    alt={title}
-                    fill
-                    sizes="(max-width: 768px) 340px, 400px"
-                    className="object-contain object-center md:object-left"
-                    priority
-                  />
-                </div>
-              ) : (
-                <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white leading-tight">
-                  {title}
-                </h1>
-              )}
-
-              {/* Meta information row */}
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-xs md:text-sm font-semibold text-zinc-300">
-                {rating && (
-                  <div className="flex items-center gap-1 text-yellow-500">
-                    <Star size={16} className="fill-yellow-500 text-yellow-500" />
-                    <span>{rating}</span>
-                  </div>
-                )}
-                {year && (
-                  <Link href={`/discover?type=tv&year=${year}`} className="flex items-center gap-1 hover:text-red-500 transition-colors duration-150">
-                    <Calendar size={16} className="text-zinc-500" />
-                    <span>{year}</span>
-                  </Link>
-                )}
-                {seasonsInfo && (
-                  <div className="flex items-center gap-1">
-                    <Tv size={16} className="text-zinc-500" />
-                    <span>{seasonsInfo} ({episodesInfo})</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Genres badges */}
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-1">
-                {genres.map((g) => (
-                  <Link key={g.id} href={`/discover?genre=${g.id}&genreName=${encodeURIComponent(g.name)}`} className="text-[10px] sm:text-xs font-bold uppercase tracking-wider bg-zinc-900 border border-zinc-800 text-zinc-300 px-2.5 py-1 rounded-full hover:bg-red-950 hover:border-red-900 hover:text-red-400 transition-colors duration-150">
-                    {g.name}
-                  </Link>
-                ))}
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 pt-2">
-              <Link
-                href={watchUrl}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold text-sm md:text-base px-8 h-11 rounded-full transition-all duration-150"
-              >
-                <Play size={18} className="fill-white" />
-                Mulai Nonton
-              </Link>
-              <WatchlistButton item={data} />
-            </div>
-
-            {/* Overview / Synopsis */}
-            <div className="space-y-2 text-left">
-              <h2 className="text-base sm:text-lg font-bold text-zinc-200">Sinopsis</h2>
-              <p className="text-zinc-300 text-xs sm:text-sm md:text-base leading-relaxed max-w-3xl">
-                {overview}
-              </p>
-            </div>
-
-          </div>
         </div>
 
-        {/* Cast & Crew Section */}
-        <div className="mt-12">
-          <CastRow cast={cast} />
-        </div>
+        {/* Netflix 1-Column Episode List */}
+        <EpisodeSelector tvId={data.id} seasons={data.seasons} seriesTitle={title} />
 
-        {/* Season & Episode Selector */}
-        <div className="mt-16 pt-10 border-t border-zinc-900">
-          <EpisodeSelector tvId={data.id} seasons={data.seasons} />
-        </div>
+        {/* More Like This (Netflix 3-Column Rich Cards) */}
+        <MoreLikeThisGrid items={recommendations} mediaType="tv" />
 
-        {/* Recommendations Section */}
-        {recommendations.length > 0 && (
-          <div className="space-y-4 mt-16 pt-10 border-t border-zinc-900">
-            <h2 className="text-lg md:text-xl font-bold text-white">Rekomendasi Terkait</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
-              {recommendations.map((item) => (
-                <MovieCard key={item.id} item={{ ...item, media_type: 'tv' }} />
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Cast Carousel */}
+        <CastRow cast={cast} titleLabel={`Tentang & Pemeran ${title}`} />
       </div>
     </div>
   );

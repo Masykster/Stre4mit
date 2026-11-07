@@ -1,256 +1,121 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
-import { Play, Star, Clock, Calendar, X, AlertTriangle, RefreshCw } from 'lucide-react';
-import WatchlistButton from './WatchlistButton';
-import MovieCard from './MovieCard';
+import MediaHeroHeader from './MediaHeroHeader';
+import MoreLikeThisGrid from './MoreLikeThisGrid';
 import CastRow from './CastRow';
-import { useApp } from '../context/AppContext';
-import { VIDEO_SOURCES } from '../lib/videoSources';
-import useEmbedFallback from '../hooks/useEmbedFallback';
+import { getMatchScore, getMaturityBadge } from '../lib/genres';
 
 export default function MovieDetailClient({
   data,
   title,
-  rating,
   year,
   runtime,
   genres,
   overview,
   cast,
+  director,
   recommendations,
   logoUrl,
+  trailerKey,
 }) {
-  const { addToHistory, isLoaded } = useApp();
-  const [isPlaying, setIsPlaying] = useState(false);
-  const { source, embedUrl, iframeKey, notice, exhausted, selectSource, handleFrameLoad, retry } = useEmbedFallback({
-    type: 'movie',
-    id: data.id,
-    enabled: isPlaying,
-  });
-
-  // Add to watch history when playing starts
-  useEffect(() => {
-    if (isPlaying && isLoaded) {
-      addToHistory({
-        id: data.id,
-        media_type: 'movie',
-        title,
-        name: title,
-        backdrop_path: data.backdrop_path,
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPlaying, isLoaded]);
-
-  const handlePlay = () => {
-    setIsPlaying(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  const matchScore = getMatchScore(data.vote_average);
+  const maturity = getMaturityBadge(data);
 
   return (
-    <div className="relative min-h-screen pb-16 bg-black text-zinc-100">
-      {/* Backdrop / Player Area */}
-      <div
-        className={
-          isPlaying
-            ? 'relative w-full bg-black z-20'
-            : 'absolute top-0 left-0 right-0 h-[60vh] overflow-hidden select-none z-0'
-        }
-      >
-        {isPlaying ? (
-          /* ── Video Player ── */
-          <div className="max-w-6xl mx-auto px-4 pt-20 pb-4">
-            {notice && (
-              <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold text-amber-400">
-                <AlertTriangle size={14} className="flex-shrink-0" />
-                <span>{notice}</span>
-              </div>
-            )}
-            <div className="relative aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border border-zinc-900">
-              <iframe
-                key={iframeKey}
-                src={embedUrl}
-                onLoad={handleFrameLoad}
-                title={title}
-                className="w-full h-full border-none"
-                allowFullScreen={true}
-                webkitallowfullscreen="true"
-                mozallowfullscreen="true"
-                allow="autoplay *; fullscreen *; encrypted-media *; picture-in-picture *"
-              />
-              {/* All servers failed — manual selector stays usable below the player */}
-              {exhausted && (
-                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-black/95 px-6 text-center">
-                  <AlertTriangle size={22} className="text-amber-500" />
-                  <p className="text-sm font-bold text-zinc-100">Semua server gagal dimuat</p>
-                  <p className="text-xs text-zinc-400 max-w-xs">Coba lagi, atau pilih server lain dari daftar server.</p>
-                  <button
-                    onClick={retry}
-                    className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 active:scale-95 text-white text-xs font-bold px-5 h-10 rounded-full transition-all"
-                  >
-                    <RefreshCw size={14} />
-                    Coba Lagi
-                  </button>
-                </div>
+    <div className="min-h-screen pb-20 bg-[#141414] text-zinc-100">
+      {/* Top 16:9 Netflix Media Showcase Header */}
+      <MediaHeroHeader
+        data={data}
+        mediaType="movie"
+        title={title}
+        logoUrl={logoUrl}
+        trailerKey={trailerKey}
+      />
+
+      {/* Main Details Container */}
+      <div className="max-w-6xl mx-auto px-4 md:px-12 pt-4 space-y-12">
+        {/* Netflix 2-Column Metadata Split */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+          {/* Left 65%: Match %, Year, Maturity, Runtime, HD, Synopsis */}
+          <div className="md:col-span-8 space-y-4">
+            <div className="flex flex-wrap items-center gap-2.5 text-xs sm:text-sm font-semibold text-zinc-300">
+              {matchScore && (
+                <span className="text-emerald-400 font-bold text-sm sm:text-base">
+                  {matchScore}% Cocok
+                </span>
               )}
-              {/* Close player button */}
-              <button
-                onClick={() => setIsPlaying(false)}
-                className="absolute top-3 right-3 bg-black/70 text-white p-2 rounded-full hover:bg-red-600 transition-colors z-30 active:scale-95 border border-zinc-700/50"
-                title="Tutup Player"
-              >
-                <X size={18} />
-              </button>
-            </div>
-          </div>
-        ) : (
-          /* ── Backdrop ── */
-          <>
-            {data.backdrop_path && (
-              <>
-                <Image
-                  src={`https://image.tmdb.org/t/p/w1280${data.backdrop_path}`}
-                  alt={title}
-                  fill
-                  priority
-                  className="object-cover opacity-30 blur-xs"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent" />
-              </>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Content Container */}
-      <div className={`relative z-10 max-w-6xl mx-auto px-4 ${isPlaying ? 'pt-8' : 'pt-10 sm:pt-16'}`}>
-        <div className="flex flex-col md:flex-row gap-8 items-start">
-          {/* Left: Poster — hidden while the inline player is open */}
-          {!isPlaying && (
-            <div className="relative w-44 sm:w-60 aspect-[2/3] bg-zinc-900 rounded-xl overflow-hidden shadow-2xl border border-zinc-800/80 mx-auto md:mx-0 flex-shrink-0">
-              {data.poster_path ? (
-                <Image
-                  src={`https://image.tmdb.org/t/p/w500${data.poster_path}`}
-                  alt={title}
-                  fill
-                  sizes="(max-width: 768px) 176px, 240px"
-                  className="object-cover"
-                />
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center text-zinc-500 font-bold p-4 text-center">
-                  {title}
-                </div>
+              {year && (
+                <Link
+                  href={`/discover?type=movie&year=${year}&view=grid`}
+                  className="hover:text-white transition-colors"
+                >
+                  {year}
+                </Link>
               )}
-            </div>
-          )}
-
-          {/* Right: Info */}
-          <div className="w-full min-w-0 flex-grow space-y-6 text-center md:text-left">
-            <div className="space-y-3">
-              {/* Title / Logo */}
-              {logoUrl ? (
-                <div className="relative h-20 md:h-28 w-full max-w-[280px] sm:max-w-[340px] md:max-w-[400px] mx-auto md:mx-0 select-none">
-                  <Image
-                    src={logoUrl}
-                    alt={title}
-                    fill
-                    sizes="(max-width: 768px) 340px, 400px"
-                    className="object-contain object-center md:object-left"
-                    priority
-                  />
-                </div>
-              ) : (
-                <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white leading-tight">
-                  {title}
-                </h1>
-              )}
-
-              {/* Meta information row */}
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-xs md:text-sm font-semibold text-zinc-300">
-                {rating && (
-                  <div className="flex items-center gap-1 text-yellow-500">
-                    <Star size={16} className="fill-yellow-500 text-yellow-500" />
-                    <span>{rating}</span>
-                  </div>
-                )}
-                {year && (
-                  <Link href={`/discover?type=movie&year=${year}`} className="flex items-center gap-1 hover:text-red-500 transition-colors duration-150">
-                    <Calendar size={16} className="text-zinc-500" />
-                    <span>{year}</span>
-                  </Link>
-                )}
-                {runtime && (
-                  <div className="flex items-center gap-1">
-                    <Clock size={16} className="text-zinc-500" />
-                    <span>{runtime}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Genres badges */}
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-1">
-                {genres.map((g) => (
-                  <Link key={g.id} href={`/discover?genre=${g.id}&genreName=${encodeURIComponent(g.name)}`} className="text-[10px] sm:text-xs font-bold uppercase tracking-wider bg-zinc-900 border border-zinc-800 text-zinc-300 px-2.5 py-1 rounded-full hover:bg-red-950 hover:border-red-900 hover:text-red-400 transition-colors duration-150">
-                    {g.name}
-                  </Link>
-                ))}
-              </div>
+              <span className="border border-zinc-500 px-1.5 py-px text-xs text-zinc-200">
+                {maturity}
+              </span>
+              {runtime && <span>{runtime}</span>}
+              <span className="border border-zinc-500/80 rounded-[2px] px-1.5 py-px text-[10px] text-zinc-300 font-bold">
+                HD
+              </span>
             </div>
 
-            {/* Actions */}
-            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 pt-2">
-              <button
-                onClick={handlePlay}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold text-sm md:text-base px-8 h-11 rounded-full transition-all duration-150"
-              >
-                <Play size={18} className="fill-white" />
-                {isPlaying ? 'Kembali ke Player' : 'Nonton Sekarang'}
-              </button>
-              <WatchlistButton item={data} />
-              {/* Server Selector — far right */}
-              <select
-                id="movie-source-selector"
-                name="source"
-                value={source}
-                onChange={(e) => selectSource(e.target.value)}
-                className="w-full sm:w-auto sm:ml-auto bg-zinc-900 text-zinc-300 text-xs font-semibold px-4 h-11 rounded-full border border-zinc-800 focus:outline-none focus:border-red-600 cursor-pointer"
-              >
-                {VIDEO_SOURCES.map((s) => (
-                  <option key={s.value} value={s.value}>{s.optionLabel}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Overview / Synopsis */}
-            <div className="space-y-2 text-left">
-              <h2 className="text-base sm:text-lg font-bold text-zinc-200">Sinopsis</h2>
-              <p className="text-zinc-300 text-xs sm:text-sm md:text-base leading-relaxed max-w-3xl">
-                {overview}
+            {data.tagline && (
+              <p className="text-sm sm:text-base font-bold text-white italic">
+                &ldquo;{data.tagline}&rdquo;
               </p>
-            </div>
+            )}
 
+            <p className="text-zinc-200 text-sm sm:text-[15px] leading-relaxed">
+              {overview}
+            </p>
+          </div>
+
+          {/* Right 35%: Cast, Genres, Director */}
+          <div className="md:col-span-4 space-y-3 text-xs sm:text-[13px] leading-relaxed">
+            {cast.length > 0 && (
+              <div>
+                <span className="text-zinc-500">Pemeran: </span>
+                <span className="text-zinc-200">
+                  {cast.slice(0, 4).map((c) => c.name).join(', ')}
+                  {cast.length > 4 ? ', lainnya' : ''}
+                </span>
+              </div>
+            )}
+
+            {genres.length > 0 && (
+              <div>
+                <span className="text-zinc-500">Genre: </span>
+                {genres.map((g, idx) => (
+                  <span key={g.id}>
+                    {idx > 0 && ', '}
+                    <Link
+                      href={`/discover?type=movie&genre=${g.id}&genreName=${encodeURIComponent(g.name)}&view=grid`}
+                      className="text-zinc-200 hover:underline"
+                    >
+                      {g.name}
+                    </Link>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {director && (
+              <div>
+                <span className="text-zinc-500">Sutradara: </span>
+                <span className="text-zinc-200">{director}</span>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Cast & Crew Section */}
-        <div className="mt-12">
-          <CastRow cast={cast} />
-        </div>
+        {/* More Like This (Netflix 3-Column Rich Cards) */}
+        <MoreLikeThisGrid items={recommendations} mediaType="movie" />
 
-        {/* Recommendations Section */}
-        {recommendations.length > 0 && (
-          <div className="space-y-4 mt-16 pt-10 border-t border-zinc-900">
-            <h2 className="text-lg md:text-xl font-bold text-white">Rekomendasi Terkait</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
-              {recommendations.map((item) => (
-                <MovieCard key={item.id} item={{ ...item, media_type: 'movie' }} />
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Cast Carousel */}
+        <CastRow cast={cast} titleLabel={`Tentang & Pemeran ${title}`} />
       </div>
     </div>
   );

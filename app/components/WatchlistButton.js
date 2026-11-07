@@ -1,22 +1,30 @@
 "use client";
 
 import { useApp } from '../context/AppContext';
-import { Heart } from 'lucide-react';
+import { Plus, Check } from 'lucide-react';
 
-export default function WatchlistButton({ item }) {
+export default function WatchlistButton({ item, size = 'md', className = '' }) {
   const { isInWatchlist, addToWatchlist, removeFromWatchlist, isLoaded } = useApp();
-  
+
+  const sizeClasses =
+    size === 'sm'
+      ? 'h-8 w-8'
+      : 'h-10 w-10 sm:h-11 sm:w-11';
+  const iconSize = size === 'sm' ? 16 : 20;
+
   if (!isLoaded) {
     return (
-      <div className="h-11 w-11 rounded-full bg-zinc-900 animate-pulse border border-zinc-800" />
+      <div className={`${sizeClasses} rounded-full bg-[#2a2a2a]/70 animate-pulse border-2 border-zinc-600/50 ${className}`} />
     );
   }
 
   const mediaType = item.media_type || (item.first_air_date ? 'tv' : 'movie');
-  const fav = isInWatchlist(item.id, mediaType);
+  const inList = isInWatchlist(item.id, mediaType);
 
-  const handleToggle = () => {
-    if (fav) {
+  const handleToggle = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (inList) {
       removeFromWatchlist(item.id, mediaType);
     } else {
       addToWatchlist({
@@ -27,7 +35,8 @@ export default function WatchlistButton({ item }) {
         backdrop_path: item.backdrop_path,
         media_type: mediaType,
         vote_average: item.vote_average,
-        release_date: item.release_date || item.first_air_date
+        genre_ids: item.genre_ids || (item.genres ? item.genres.map((g) => g.id) : []),
+        release_date: item.release_date || item.first_air_date,
       });
     }
   };
@@ -36,16 +45,16 @@ export default function WatchlistButton({ item }) {
     <button
       type="button"
       onClick={handleToggle}
-      aria-label={fav ? 'Hapus dari Watchlist' : 'Tambah ke Watchlist'}
-      aria-pressed={fav}
-      title={fav ? 'Hapus dari Watchlist' : 'Tambah ke Watchlist'}
-      className={`flex h-11 w-11 items-center justify-center rounded-full border transition-all duration-150 active:scale-95 select-none ${
-        fav
-          ? 'border-zinc-100 bg-zinc-100 text-zinc-900 hover:bg-zinc-200'
-          : 'border-zinc-800 bg-transparent text-zinc-100 hover:border-zinc-700 hover:bg-zinc-900'
-      }`}
+      aria-label={inList ? 'Hapus dari Daftar Saya' : 'Tambahkan ke Daftar Saya'}
+      aria-pressed={inList}
+      title={inList ? 'Hapus dari Daftar Saya' : 'Tambahkan ke Daftar Saya'}
+      className={`flex items-center justify-center rounded-full border-2 transition-all duration-150 active:scale-90 select-none cursor-pointer ${sizeClasses} ${
+        inList
+          ? 'border-white bg-white/15 text-white hover:bg-white/25'
+          : 'border-zinc-400/80 bg-[#2a2a2a]/70 text-zinc-100 hover:border-white hover:bg-[#2a2a2a]'
+      } ${className}`}
     >
-      <Heart size={18} className={fav ? 'fill-red-600 text-red-600' : ''} />
+      {inList ? <Check size={iconSize} strokeWidth={2.5} /> : <Plus size={iconSize} strokeWidth={2.5} />}
     </button>
   );
 }
