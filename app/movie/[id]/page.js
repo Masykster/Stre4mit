@@ -30,7 +30,7 @@ export default async function MovieDetails({ params }) {
   const runtime = data.runtime ? `${Math.floor(data.runtime / 60)}j ${data.runtime % 60}m` : '';
   const genres = data.genres || [];
   const overview = data.overview || 'Sinopsis belum tersedia.';
-  const cast = data.credits?.cast?.slice(0, 6) || [];
+  const cast = data.credits?.cast?.slice(0, 12) || [];
   const recommendations = (data.recommendations?.results || []).filter(item => !item.adult).slice(0, 6);
 
   const logos = data.images?.logos || [];

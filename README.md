@@ -9,7 +9,7 @@ Kloningan antarmuka platform streaming film & TV series (gaya Netflix) yang diba
 - **Discover** — filter berdasarkan tipe (Film/TV), genre, Anime, Drama, tahun, bulan, dan urutan; dilengkapi infinite scroll
 - **Detail Film & TV** — sinopsis, pemeran, rekomendasi, logo judul resolusi tinggi, dan selector musim/episode untuk TV
 - **Watchlist & Riwayat** — tersimpan di `localStorage` melalui React Context, tanpa perlu akun
-- **Multi-server player** — 7 sumber embed yang bisa dipilih, mode bioskop, layar penuh, dan navigasi episode sebelumnya/selanjutnya
+- **Multi-server player** — 12 sumber embed yang bisa dipilih, mode bioskop, layar penuh, dan navigasi episode sebelumnya/selanjutnya
 
 ## Teknologi
 

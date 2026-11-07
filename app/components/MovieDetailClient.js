@@ -3,11 +3,13 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Play, Star, Clock, Calendar, X } from 'lucide-react';
+import { Play, Star, Clock, Calendar, X, AlertTriangle, RefreshCw } from 'lucide-react';
 import WatchlistButton from './WatchlistButton';
 import MovieCard from './MovieCard';
+import CastRow from './CastRow';
 import { useApp } from '../context/AppContext';
-import { VIDEO_SOURCES, getEmbedUrl, DEFAULT_SOURCE } from '../lib/videoSources';
+import { VIDEO_SOURCES } from '../lib/videoSources';
+import useEmbedFallback from '../hooks/useEmbedFallback';
 
 export default function MovieDetailClient({
   data,
@@ -23,7 +25,11 @@ export default function MovieDetailClient({
 }) {
   const { addToHistory, isLoaded } = useApp();
   const [isPlaying, setIsPlaying] = useState(false);
-  const [source, setSource] = useState(DEFAULT_SOURCE);
+  const { source, embedUrl, iframeKey, notice, exhausted, selectSource, handleFrameLoad, retry } = useEmbedFallback({
+    type: 'movie',
+    id: data.id,
+    enabled: isPlaying,
+  });
 
   // Add to watch history when playing starts
   useEffect(() => {
@@ -44,8 +50,6 @@ export default function MovieDetailClient({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const embedUrl = getEmbedUrl(source, 'movie', data.id);
-
   return (
     <div className="relative min-h-screen pb-16 bg-black text-zinc-100">
       {/* Backdrop / Player Area */}
@@ -59,10 +63,17 @@ export default function MovieDetailClient({
         {isPlaying ? (
           /* ── Video Player ── */
           <div className="max-w-6xl mx-auto px-4 pt-20 pb-4">
+            {notice && (
+              <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold text-amber-400">
+                <AlertTriangle size={14} className="flex-shrink-0" />
+                <span>{notice}</span>
+              </div>
+            )}
             <div className="relative aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border border-zinc-900">
               <iframe
-                key={source}
+                key={iframeKey}
                 src={embedUrl}
+                onLoad={handleFrameLoad}
                 title={title}
                 className="w-full h-full border-none"
                 allowFullScreen={true}
@@ -70,6 +81,21 @@ export default function MovieDetailClient({
                 mozallowfullscreen="true"
                 allow="autoplay *; fullscreen *; encrypted-media *; picture-in-picture *"
               />
+              {/* All servers failed — manual selector stays usable below the player */}
+              {exhausted && (
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-black/95 px-6 text-center">
+                  <AlertTriangle size={22} className="text-amber-500" />
+                  <p className="text-sm font-bold text-zinc-100">Semua server gagal dimuat</p>
+                  <p className="text-xs text-zinc-400 max-w-xs">Coba lagi, atau pilih server lain dari daftar server.</p>
+                  <button
+                    onClick={retry}
+                    className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 active:scale-95 text-white text-xs font-bold px-5 h-10 rounded-full transition-all"
+                  >
+                    <RefreshCw size={14} />
+                    Coba Lagi
+                  </button>
+                </div>
+              )}
               {/* Close player button */}
               <button
                 onClick={() => setIsPlaying(false)}
@@ -102,25 +128,27 @@ export default function MovieDetailClient({
       {/* Content Container */}
       <div className={`relative z-10 max-w-6xl mx-auto px-4 ${isPlaying ? 'pt-8' : 'pt-10 sm:pt-16'}`}>
         <div className="flex flex-col md:flex-row gap-8 items-start">
-          {/* Left: Poster */}
-          <div className="relative w-44 sm:w-60 aspect-[2/3] bg-zinc-900 rounded-xl overflow-hidden shadow-2xl border border-zinc-800/80 mx-auto md:mx-0 flex-shrink-0">
-            {data.poster_path ? (
-              <Image
-                src={`https://image.tmdb.org/t/p/w500${data.poster_path}`}
-                alt={title}
-                fill
-                sizes="(max-width: 768px) 176px, 240px"
-                className="object-cover"
-              />
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center text-zinc-500 font-bold p-4 text-center">
-                {title}
-              </div>
-            )}
-          </div>
+          {/* Left: Poster — hidden while the inline player is open */}
+          {!isPlaying && (
+            <div className="relative w-44 sm:w-60 aspect-[2/3] bg-zinc-900 rounded-xl overflow-hidden shadow-2xl border border-zinc-800/80 mx-auto md:mx-0 flex-shrink-0">
+              {data.poster_path ? (
+                <Image
+                  src={`https://image.tmdb.org/t/p/w500${data.poster_path}`}
+                  alt={title}
+                  fill
+                  sizes="(max-width: 768px) 176px, 240px"
+                  className="object-cover"
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center text-zinc-500 font-bold p-4 text-center">
+                  {title}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Right: Info */}
-          <div className="flex-grow space-y-6 text-center md:text-left">
+          <div className="w-full min-w-0 flex-grow space-y-6 text-center md:text-left">
             <div className="space-y-3">
               {/* Title / Logo */}
               {logoUrl ? (
@@ -173,23 +201,21 @@ export default function MovieDetailClient({
             </div>
 
             {/* Actions */}
-            <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-3 pt-2">
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 pt-2">
               <button
                 onClick={handlePlay}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold text-sm md:text-base px-8 h-11 rounded-full transition-all duration-150"
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold text-sm md:text-base px-8 h-11 rounded-full transition-all duration-150"
               >
                 <Play size={18} className="fill-white" />
                 {isPlaying ? 'Kembali ke Player' : 'Nonton Sekarang'}
               </button>
-              <div className="w-full sm:w-auto">
-                <WatchlistButton item={data} />
-              </div>
+              <WatchlistButton item={data} />
               {/* Server Selector — far right */}
               <select
                 id="movie-source-selector"
                 name="source"
                 value={source}
-                onChange={(e) => setSource(e.target.value)}
+                onChange={(e) => selectSource(e.target.value)}
                 className="w-full sm:w-auto sm:ml-auto bg-zinc-900 text-zinc-300 text-xs font-semibold px-4 h-11 rounded-full border border-zinc-800 focus:outline-none focus:border-red-600 cursor-pointer"
               >
                 {VIDEO_SOURCES.map((s) => (
@@ -206,38 +232,12 @@ export default function MovieDetailClient({
               </p>
             </div>
 
-            {/* Cast & Crew Section */}
-            {cast.length > 0 && (
-              <div className="space-y-3 pt-2 text-left">
-                <h2 className="text-base sm:text-lg font-bold text-zinc-200">Pemeran Utama</h2>
-                <div className="flex flex-wrap justify-start gap-4">
-                  {cast.map((c) => (
-                    <div key={c.id} className="flex flex-col items-center w-20 text-center gap-1.5">
-                      <div className="relative w-12 h-12 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800 flex-shrink-0">
-                        {c.profile_path ? (
-                          <Image
-                            src={`https://image.tmdb.org/t/p/w185${c.profile_path}`}
-                            alt={c.name}
-                            fill
-                            sizes="48px"
-                            className="object-cover"
-                          />
-                        ) : (
-                          <div className="absolute inset-0 flex items-center justify-center text-[8px] text-zinc-600 font-bold">
-                            No Pic
-                          </div>
-                        )}
-                      </div>
-                      <div className="min-w-0 w-full">
-                        <p className="text-[10px] font-bold text-zinc-200 truncate">{c.name}</p>
-                        <p className="text-[9px] text-zinc-500 truncate">{c.character}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
+        </div>
+
+        {/* Cast & Crew Section */}
+        <div className="mt-12">
+          <CastRow cast={cast} />
         </div>
 
         {/* Recommendations Section */}

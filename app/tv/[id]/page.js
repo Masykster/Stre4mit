@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { Play, Star, Calendar, Tv } from 'lucide-react';
 import WatchlistButton from '../../components/WatchlistButton';
 import MovieCard from '../../components/MovieCard';
+import CastRow from '../../components/CastRow';
 import EpisodeSelector from '../../components/EpisodeSelector';
 
 async function getTVData(id) {
@@ -36,7 +37,7 @@ export default async function TVDetails({ params }) {
   const episodesInfo = data.number_of_episodes ? `${data.number_of_episodes} Episode` : '';
   const genres = data.genres || [];
   const overview = data.overview || 'Sinopsis belum tersedia.';
-  const cast = data.credits?.cast?.slice(0, 6) || [];
+  const cast = data.credits?.cast?.slice(0, 12) || [];
   const recommendations = (data.recommendations?.results || []).filter(item => !item.adult).slice(0, 6);
   const watchUrl = `/watch/tv/${data.id}/1/1`;
 
@@ -85,7 +86,7 @@ export default async function TVDetails({ params }) {
           </div>
 
           {/* Right: Info */}
-          <div className="flex-grow space-y-6 text-center md:text-left">
+          <div className="w-full min-w-0 flex-grow space-y-6 text-center md:text-left">
             <div className="space-y-3">
               {logoUrl ? (
                 <div className="relative h-20 md:h-28 w-full max-w-[280px] sm:max-w-[340px] md:max-w-[400px] mx-auto md:mx-0 select-none">
@@ -137,17 +138,15 @@ export default async function TVDetails({ params }) {
             </div>
 
             {/* Actions */}
-            <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-3 pt-2">
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 pt-2">
               <Link
                 href={watchUrl}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold text-sm md:text-base px-8 h-11 rounded-full transition-all duration-150"
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold text-sm md:text-base px-8 h-11 rounded-full transition-all duration-150"
               >
                 <Play size={18} className="fill-white" />
                 Mulai Nonton
               </Link>
-              <div className="w-full sm:w-auto">
-                <WatchlistButton item={data} />
-              </div>
+              <WatchlistButton item={data} />
             </div>
 
             {/* Overview / Synopsis */}
@@ -158,38 +157,12 @@ export default async function TVDetails({ params }) {
               </p>
             </div>
 
-            {/* Cast & Crew Section */}
-            {cast.length > 0 && (
-              <div className="space-y-3 pt-2 text-left">
-                <h2 className="text-base sm:text-lg font-bold text-zinc-200">Pemeran Utama</h2>
-                <div className="flex flex-wrap justify-start gap-4">
-                  {cast.map((c) => (
-                    <div key={c.id} className="flex flex-col items-center w-20 text-center gap-1.5">
-                      <div className="relative w-12 h-12 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800 flex-shrink-0">
-                        {c.profile_path ? (
-                          <Image
-                            src={`https://image.tmdb.org/t/p/w185${c.profile_path}`}
-                            alt={c.name}
-                            fill
-                            sizes="48px"
-                            className="object-cover"
-                          />
-                        ) : (
-                          <div className="absolute inset-0 flex items-center justify-center text-[8px] text-zinc-600 font-bold">
-                            No Pic
-                          </div>
-                        )}
-                      </div>
-                      <div className="min-w-0 w-full">
-                        <p className="text-[10px] font-bold text-zinc-200 truncate">{c.name}</p>
-                        <p className="text-[9px] text-zinc-500 truncate">{c.character}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
+        </div>
+
+        {/* Cast & Crew Section */}
+        <div className="mt-12">
+          <CastRow cast={cast} />
         </div>
 
         {/* Season & Episode Selector */}

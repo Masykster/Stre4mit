@@ -8,7 +8,7 @@ export default function WatchlistButton({ item }) {
   
   if (!isLoaded) {
     return (
-      <div className="h-11 w-32 rounded-full bg-zinc-900 animate-pulse border border-zinc-800" />
+      <div className="h-11 w-11 rounded-full bg-zinc-900 animate-pulse border border-zinc-800" />
     );
   }
 
@@ -34,15 +34,18 @@ export default function WatchlistButton({ item }) {
 
   return (
     <button
+      type="button"
       onClick={handleToggle}
-      className={`flex items-center justify-center gap-2 h-11 px-5 rounded-full border text-sm font-bold transition-all duration-150 active:scale-95 select-none ${
-        fav 
-          ? 'bg-zinc-100 text-zinc-900 border-zinc-100 hover:bg-zinc-200' 
-          : 'bg-transparent text-zinc-100 border-zinc-800 hover:bg-zinc-900 hover:border-zinc-700'
+      aria-label={fav ? 'Hapus dari Watchlist' : 'Tambah ke Watchlist'}
+      aria-pressed={fav}
+      title={fav ? 'Hapus dari Watchlist' : 'Tambah ke Watchlist'}
+      className={`flex h-11 w-11 items-center justify-center rounded-full border transition-all duration-150 active:scale-95 select-none ${
+        fav
+          ? 'border-zinc-100 bg-zinc-100 text-zinc-900 hover:bg-zinc-200'
+          : 'border-zinc-800 bg-transparent text-zinc-100 hover:border-zinc-700 hover:bg-zinc-900'
       }`}
     >
       <Heart size={18} className={fav ? 'fill-red-600 text-red-600' : ''} />
-      {fav ? 'Dalam Watchlist' : 'Tambah ke Watchlist'}
     </button>
   );
 }

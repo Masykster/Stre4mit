@@ -27,7 +27,7 @@ async function fetchFromTMDb(endpoint, queryParams = {}) {
 // Skeletons to avoid layout shift (CLS) and display progressive loading
 function HeroBannerSkeleton() {
   return (
-    <div className="w-full h-[60vh] sm:h-[70vh] md:h-[80vh] bg-zinc-950 animate-pulse flex items-end p-6 md:p-12 border-b border-zinc-900">
+    <div className="w-full h-[72vh] min-h-[520px] max-h-[820px] sm:h-[70vh] sm:min-h-0 md:h-[80vh] bg-zinc-950 animate-pulse flex items-end p-6 md:p-12 border-b border-zinc-900">
       <div className="space-y-4 max-w-2xl w-full">
         <div className="h-4 w-20 bg-zinc-900 rounded"></div>
         <div className="h-10 sm:h-16 w-3/4 bg-zinc-900 rounded"></div>
@@ -122,10 +122,12 @@ export default async function Home() {
 
   return (
     <div className="pb-16 space-y-10 bg-black">
-      {/* Hero Carousel */}
-      <Suspense fallback={<HeroBannerSkeleton />}>
-        <LazyHeroBanner />
-      </Suspense>
+      {/* Hero Carousel — pulled under the transparent navbar */}
+      <div className="-mt-16">
+        <Suspense fallback={<HeroBannerSkeleton />}>
+          <LazyHeroBanner />
+        </Suspense>
+      </div>
 
       {/* Continue Watching (Client-Side Storage) */}
       <ContinueWatchingRow />

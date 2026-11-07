@@ -12,16 +12,16 @@ export default function MovieCard({ item, priority = false }) {
   const href = `/${mediaType}/${id}`;
 
   return (
-    <Link href={href} className="group relative block bg-zinc-900 rounded-lg overflow-hidden transition-all duration-300 ease-out hover:scale-105 hover:shadow-2xl hover:shadow-red-950/20 active:scale-[0.98]">
+    <Link href={href} className="group block">
       {/* Poster Image Container */}
-      <div className="relative w-full aspect-[2/3] bg-zinc-950">
+      <div className="relative w-full aspect-[2/3] bg-zinc-950 rounded-lg overflow-hidden">
         {item.poster_path ? (
           <Image
             src={`https://image.tmdb.org/t/p/w342${item.poster_path}`}
             alt={title}
             fill
             sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 17vw"
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
+            className="object-cover"
             priority={priority}
           />
         ) : (
@@ -39,18 +39,10 @@ export default function MovieCard({ item, priority = false }) {
         )}
       </div>
 
-      {/* Card Info */}
-      <div className="p-2 bg-zinc-900 border-t border-zinc-800/50">
-        <h3 className="text-xs md:text-sm font-semibold text-zinc-100 group-hover:text-red-500 transition-colors truncate">
-          {title}
-        </h3>
-        <div className="flex items-center justify-between mt-1 text-[10px] md:text-xs text-zinc-400">
-          <span className="uppercase font-bold tracking-wider text-[9px] bg-zinc-800 px-1 py-0.5 rounded text-zinc-300">
-            {mediaType === 'tv' ? 'TV' : 'Film'}
-          </span>
-          <span>{year}</span>
-        </div>
-      </div>
+      <h3 className="mt-2 text-xs md:text-sm font-semibold text-zinc-100 group-hover:text-red-500 transition-colors truncate">
+        {title}
+        {year ? ` (${year})` : ''}
+      </h3>
     </Link>
   );
 }

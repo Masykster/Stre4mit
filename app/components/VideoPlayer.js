@@ -2,15 +2,20 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { Maximize2, ArrowLeft, ChevronLeft, ChevronRight, Tv } from 'lucide-react';
+import { Maximize2, ArrowLeft, ChevronLeft, ChevronRight, Tv, AlertTriangle, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
-import { VIDEO_SOURCES, getEmbedUrl, DEFAULT_SOURCE } from '../lib/videoSources';
+import { VIDEO_SOURCES } from '../lib/videoSources';
+import useEmbedFallback from '../hooks/useEmbedFallback';
 
 export default function VideoPlayer({ id, type, title, backdropPath, season, episode, nextEpisodeHref, prevEpisodeHref }) {
   const { addToHistory, isLoaded } = useApp();
   const [theaterMode, setTheaterMode] = useState(false);
-  // ponytail: sandbox with allow-top-navigation-by-user-activation blocks auto-redirects without triggering sbx.html 404
-  const [source, setSource] = useState(DEFAULT_SOURCE);
+  const { source, embedUrl, iframeKey, notice, exhausted, selectSource, handleFrameLoad, retry } = useEmbedFallback({
+    type,
+    id,
+    season,
+    episode,
+  });
   const playerRef = useRef(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -80,8 +85,6 @@ export default function VideoPlayer({ id, type, title, backdropPath, season, epi
     }
   }, [id, type, title, backdropPath, season, episode, isLoaded, addToHistory]);
 
-  const embedUrl = getEmbedUrl(source, type, id, season, episode);
-
   return (
     <div className={`space-y-6 ${theaterMode ? 'w-full max-w-full' : 'max-w-5xl mx-auto px-4'}`}>
       {/* Player Header */}
@@ -110,7 +113,7 @@ export default function VideoPlayer({ id, type, title, backdropPath, season, epi
               id="source-selector"
               name="source"
               value={source}
-              onChange={(e) => setSource(e.target.value)}
+              onChange={(e) => selectSource(e.target.value)}
               className="bg-zinc-900 text-zinc-300 text-xs font-semibold px-3 py-1.5 rounded-lg border border-zinc-800 focus:outline-none focus:border-red-600 cursor-pointer"
             >
               {VIDEO_SOURCES.map((s) => (
@@ -118,6 +121,13 @@ export default function VideoPlayer({ id, type, title, backdropPath, season, epi
               ))}
             </select>
           </div>
+        </div>
+      )}
+
+      {notice && (
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-400">
+          <AlertTriangle size={14} className="flex-shrink-0" />
+          <span>{notice}</span>
         </div>
       )}
 
@@ -133,7 +143,9 @@ export default function VideoPlayer({ id, type, title, backdropPath, season, epi
         }`}
       >
         <iframe
+          key={iframeKey}
           src={embedUrl}
+          onLoad={handleFrameLoad}
           title={title}
           className="w-full h-full border-none"
           allowFullScreen={true}
@@ -141,6 +153,22 @@ export default function VideoPlayer({ id, type, title, backdropPath, season, epi
           mozallowfullscreen="true"
           allow="autoplay *; fullscreen *; encrypted-media *; picture-in-picture *"
         />
+
+        {/* All servers failed — keep the manual selector usable behind this overlay */}
+        {exhausted && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-black/95 px-6 text-center">
+            <AlertTriangle size={22} className="text-amber-500" />
+            <p className="text-sm font-bold text-zinc-100">Semua server gagal dimuat</p>
+            <p className="text-xs text-zinc-400 max-w-xs">Coba lagi, atau pilih server lain dari daftar server.</p>
+            <button
+              onClick={retry}
+              className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 active:scale-95 text-white text-xs font-bold px-5 h-10 rounded-full transition-all"
+            >
+              <RefreshCw size={14} />
+              Coba Lagi
+            </button>
+          </div>
+        )}
 
         {/* Floating Overlay Controls — hidden in fullscreen */}
         {!isFullscreen && (
@@ -222,7 +250,7 @@ export default function VideoPlayer({ id, type, title, backdropPath, season, epi
               id="source-selector-theater"
               name="source"
               value={source}
-              onChange={(e) => setSource(e.target.value)}
+              onChange={(e) => selectSource(e.target.value)}
               className="bg-zinc-900 text-zinc-300 text-xs font-semibold px-4 h-11 rounded-full border border-zinc-800 focus:outline-none focus:border-red-600 cursor-pointer"
             >
               {VIDEO_SOURCES.map((s) => (

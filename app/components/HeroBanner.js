@@ -10,6 +10,8 @@ export default function HeroBanner({ items }) {
   const [trailerKey, setTrailerKey] = useState(null);
   const [playTrailer, setPlayTrailer] = useState(false);
   const hoverTimeoutRef = useRef(null);
+  const pointerStartRef = useRef(null);
+  const isPointerDraggingRef = useRef(false);
 
   const currentItem = items[currentIndex];
 
@@ -38,7 +40,7 @@ export default function HeroBanner({ items }) {
     }, 8000);
 
     return () => clearInterval(interval);
-  }, [items.length, playTrailer]);
+  }, [items.length, playTrailer, currentIndex]);
 
   const handleMouseEnter = () => {
     if (!currentItem) return;
@@ -69,6 +71,45 @@ export default function HeroBanner({ items }) {
     setTrailerKey(null);
   };
 
+  const goToSlide = (direction) => {
+    setCurrentIndex((prev) => (prev + direction + items.length) % items.length);
+  };
+
+  const handlePointerDown = (event) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    pointerStartRef.current = { x: event.clientX, y: event.clientY };
+    isPointerDraggingRef.current = false;
+  };
+
+  const handlePointerMove = (event) => {
+    const start = pointerStartRef.current;
+    if (!start) return;
+    if (Math.abs(event.clientX - start.x) > 10) {
+      isPointerDraggingRef.current = true;
+    }
+  };
+
+  const handlePointerUp = (event) => {
+    const start = pointerStartRef.current;
+    pointerStartRef.current = null;
+    if (!start) return;
+
+    const deltaX = event.clientX - start.x;
+    const deltaY = event.clientY - start.y;
+
+    if (Math.abs(deltaX) >= 50 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+      goToSlide(deltaX < 0 ? 1 : -1);
+    }
+  };
+
+  // A drag should switch slides without also activating the link underneath.
+  const handleClickCapture = (event) => {
+    if (!isPointerDraggingRef.current) return;
+    event.preventDefault();
+    event.stopPropagation();
+    isPointerDraggingRef.current = false;
+  };
+
   if (!currentItem) return null;
 
   const mediaType = currentItem.media_type || 'movie';
@@ -79,9 +120,14 @@ export default function HeroBanner({ items }) {
 
   return (
     <div 
-      className="relative w-full h-[60vh] sm:h-[70vh] md:h-[80vh] bg-zinc-950 overflow-hidden"
+      className="relative w-full h-[72vh] min-h-[520px] max-h-[820px] sm:h-[70vh] sm:min-h-0 md:h-[80vh] bg-zinc-950 overflow-hidden touch-pan-y select-none"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={() => { pointerStartRef.current = null; }}
+      onClickCapture={handleClickCapture}
     >
       {/* Background Image / Video Player */}
       <div className="absolute inset-0 w-full h-full">
@@ -110,8 +156,11 @@ export default function HeroBanner({ items }) {
         )}
       </div>
 
+      {/* Top scrim keeps the transparent navbar legible over bright artwork */}
+      <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/70 via-black/25 to-transparent pointer-events-none" />
+
       {/* Hero Content Overlay */}
-      <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12 max-w-4xl z-10 flex flex-col gap-3 md:gap-4">
+      <div className="absolute bottom-0 left-0 right-0 z-10 flex w-full max-w-4xl flex-col gap-2.5 p-5 pb-16 sm:gap-3 sm:p-6 sm:pb-10 md:gap-4 md:p-12">
         {/* Release year and rating */}
         <div className="flex items-center gap-3 text-xs md:text-sm font-semibold text-zinc-300">
           <span className="bg-red-600 px-2 py-0.5 rounded text-[10px] uppercase font-extrabold text-white">
@@ -140,7 +189,7 @@ export default function HeroBanner({ items }) {
             />
           </div>
         ) : (
-          <h1 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tight text-white drop-shadow-lg leading-tight">
+          <h1 className="max-w-full break-words text-3xl font-black leading-tight tracking-tight text-white drop-shadow-lg md:text-5xl lg:text-6xl">
             {title}
           </h1>
         )}
@@ -151,33 +200,39 @@ export default function HeroBanner({ items }) {
         </p>
 
         {/* Actions */}
-        <div className="flex items-center gap-3 mt-2">
+        <div className="mt-2 flex flex-wrap items-center gap-2.5 sm:gap-3">
           <Link
             href={watchHref}
-            className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold text-sm md:text-base px-6 h-11 rounded-full transition-all duration-150"
+            className="flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-red-600 px-4 text-xs font-bold text-white transition-all duration-150 hover:bg-red-700 active:scale-95 sm:h-11 sm:px-6 sm:text-sm md:text-base"
           >
-            <Play size={18} className="fill-white" />
+            <Play size={17} className="shrink-0 fill-white" />
             Nonton Sekarang
           </Link>
           <Link
             href={detailHref}
-            className="flex items-center justify-center gap-2 bg-zinc-800/80 hover:bg-zinc-700 active:scale-95 text-zinc-100 font-bold text-sm md:text-base px-6 h-11 rounded-full backdrop-blur-sm transition-all duration-150"
+            className="flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-zinc-800/80 px-4 text-xs font-bold text-zinc-100 backdrop-blur-sm transition-all duration-150 hover:bg-zinc-700 active:scale-95 sm:h-11 sm:px-6 sm:text-sm md:text-base"
           >
-            <Info size={18} />
+            <Info size={17} className="shrink-0" />
             Detail
           </Link>
         </div>
       </div>
 
       {/* Slide Indicators */}
-      <div className="absolute right-6 md:right-12 bottom-6 md:bottom-12 flex gap-1.5 z-10">
+      <div className="absolute bottom-5 right-5 z-10 flex gap-0.5 sm:bottom-6 sm:right-6 md:bottom-12 md:right-12">
         {items.map((_, idx) => (
           <button
             key={idx}
+            type="button"
             onClick={() => setCurrentIndex(idx)}
-            className={`w-2.5 h-2.5 rounded-full transition-all duration-150 ${idx === currentIndex ? 'bg-red-600 w-6' : 'bg-zinc-600'}`}
+            className="flex h-6 w-6 items-center justify-center"
             aria-label={`Slide ke-${idx + 1}`}
-          />
+            aria-current={idx === currentIndex}
+          >
+            <span
+              className={`block h-2.5 rounded-full transition-all duration-150 ${idx === currentIndex ? 'w-6 bg-red-600' : 'w-2.5 bg-zinc-600'}`}
+            />
+          </button>
         ))}
       </div>
     </div>
